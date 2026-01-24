@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Game Plus Government</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="logo.png" type="logo-icon" height="50" width="50">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-title">
+                    <i class="fas fa-gamepad logo-icon"></i>
+                    <div>
+                        <h1>Steam Game Price Calculator</h1>
+                        <p class="tagline">Calculate your Steam shopping spree</p>
+                    </div>
+                </div>
+                <div class="stats-badge">
+                    <i class="fas fa-history"></i>
+                    <span id="historyCount">0 calculations</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <section class="card input-section">
+                    <div class="card-header">
+                        <i class="fas fa-calculator"></i>
+                        <h2>Calculator Settings</h2>
+                    </div>
+                    <div class="form-group">
+                        <label for="taxRate">
+                            <i class="fas fa-percentage"></i> Sales Tax (%)
+                        </label>
+                        <div class="input-with-slider">
+                            <input type="range" id="taxRateSlider" min="0" max="20" value="8" step="0.5">
+                            <input type="number" id="taxRate" value="8" step="0.01" min="0" max="100">
+                        </div>
+                        <div class="tax-presets">
+                            <button class="tax-preset" data-tax="0">0%</button>
+                            <button class="tax-preset" data-tax="6">6%</button>
+                            <button class="tax-preset" data-tax="8">8%</button>
+                            <button class="tax-preset" data-tax="10">10%</button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="gameCount">
+                            <i class="fas fa-shopping-cart"></i> Number of Games
+                        </label>
+                        <div class="input-with-buttons">
+                            <button class="icon-btn" onclick="changeGameCount(-1)">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <input type="number" id="gameCount" value="1" min="1" max="20">
+                            <button class="icon-btn" onclick="changeGameCount(1)">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <button class="primary-btn" onclick="updateGameFields()">
+                                <i class="fas fa-sync-alt"></i> Update
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="card games-section">
+                    <div class="card-header">
+                        <i class="fas fa-gamepad"></i>
+                        <h2>Game Prices</h2>
+                        <button class="icon-btn small" onclick="clearAllPrices()" title="Clear all prices">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                    <div id="gameInputs" class="games-grid"></div>
+                    <div class="games-summary">
+                        <span id="pricedGamesCount">0 games with price</span>
+                        <button id="calculateBtn" class="calculate-btn" onclick="calculateTotal()" disabled>
+                            <i class="fas fa-calculator"></i> Calculate Total
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+            <div class="right-panel">
+                <section class="card results-section">
+                    <div class="card-header">
+                        <i class="fas fa-receipt"></i>
+                        <h2>Total Cost</h2>
+                        <button class="icon-btn small" onclick="saveToHistory()" title="Save to history">
+                            <i class="fas fa-save"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="results-content">
+                        <div class="result-row">
+                            <div class="result-label">
+                                <i class="fas fa-list"></i> Items
+                            </div>
+                            <div class="result-value" id="itemCount">0 games</div>
+                        </div>
+                        
+                        <div class="result-row">
+                            <div class="result-label">
+                                <i class="fas fa-tag"></i> Subtotal
+                            </div>
+                            <div class="result-value" id="subtotal">$0.00</div>
+                        </div>
+                        
+                        <div class="result-row">
+                            <div class="result-label">
+                                <i class="fas fa-percentage"></i> <span id="taxLabel">Tax (8%)</span>
+                            </div>
+                            <div class="result-value" id="tax">$0.00</div>
+                        </div>
+                        
+                        <div class="result-row total-row">
+                            <div class="result-label">
+                                <i class="fas fa-dollar-sign"></i> Total
+                            </div>
+                            <div class="result-value total-amount" id="total">$0.00</div>
+                        </div>
+                        
+                        <div class="result-actions">
+                            <button class="action-btn" onclick="copyToClipboard()">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                            <button class="action-btn" onclick="resetCalculator()">
+                                <i class="fas fa-redo"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="card history-section">
+                    <div class="card-header">
+                        <i class="fas fa-history"></i>
+                        <h2>Calculation History</h2>
+                        <button class="icon-btn small" onclick="clearHistory()" title="Clear history">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    
+                    <div id="historyList" class="history-list">
+                        <div class="empty-history">
+                            <i class="fas fa-clock"></i>
+                            <p>No calculations yet</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <footer>
+            <div class="footer-content">
+                <p>© Made by Emad Rihan | Not affiliated with Steam</p>
+                <p class="footer-info">
+                    <i class="fas fa-info-circle"></i>
+                    All calculations are estimates. Actual prices may vary.
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
