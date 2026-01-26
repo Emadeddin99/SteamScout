@@ -154,9 +154,9 @@ function updateGameFields() {
     container.innerHTML = "";
 
     for (let i = 0; i < count; i++) {
-        const gameDiv = document.createElement("div");
-        gameDiv.className = "game-input";
-        gameDiv.dataset.index = i;
+        const card = document.createElement("div");
+        card.className = "game-input-card";
+        card.dataset.index = i;
         
         const label = document.createElement("label");
         label.textContent = `Game ${i + 1}`;
@@ -188,7 +188,7 @@ function updateGameFields() {
             // Visual feedback
             if (this.value && parseFloat(this.value) > 0) {
                 this.style.borderColor = "var(--success)";
-                this.style.boxShadow = "0 0 0 2px rgba(46, 204, 113, 0.1)";
+                this.style.boxShadow = "0 0 0 2px rgba(16, 185, 129, 0.2)";
             } else {
                 this.style.borderColor = "";
                 this.style.boxShadow = "";
@@ -219,9 +219,25 @@ function updateGameFields() {
             }
         });
         
-        gameDiv.appendChild(label);
-        gameDiv.appendChild(input);
-        container.appendChild(gameDiv);
+        card.appendChild(label);
+        card.appendChild(input);
+        
+        // Add remove button for multiple games
+        if (count > 1) {
+            const removeBtn = document.createElement("button");
+            removeBtn.className = "game-remove-btn";
+            removeBtn.innerHTML = '<i class="fas fa-trash"></i> Remove';
+            removeBtn.onclick = function() {
+                const currentCount = parseInt(document.getElementById("gameCount").value);
+                if (currentCount > 1) {
+                    document.getElementById("gameCount").value = currentCount - 1;
+                    updateGameFields();
+                }
+            };
+            card.appendChild(removeBtn);
+        }
+        
+        container.appendChild(card);
     }
 
     updatePricedGamesCount();
@@ -397,34 +413,94 @@ function loadHistory() {
     
     if (calculationHistory.length === 0) {
         historyList.innerHTML = `
-            <div class="empty-history">
+            <div class="empty-state">
                 <i class="fas fa-clock"></i>
-                <p>No calculations yet</p>
-                <p class="subtext">Your saved calculations will appear here</p>
+                <p>No saved calculations yet</p>
+                <p class="subtext">Your calculations will appear here</p>
             </div>
         `;
         return;
     }
     
-    // RESTORATION FUNCTION COMPLETELY REMOVED - Only show history items
-    historyList.innerHTML = calculationHistory.map(item => `
-        <div class="history-item" data-id="${item.id}">
-            <div class="history-item-header">
-                <div class="history-date">
+    historyList.innerHTML = calculationHistory.map(item => {
+        const date = new Date(item.timestamp || item.date);
+        const dateStr = date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric', 
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        return `
+            <div class="history-card-item">
+                <div class="history-timestamp">
                     <i class="fas fa-calendar-alt"></i>
-                    ${item.date}
+                    ${dateStr}
                 </div>
-                <div class="history-total">$${item.total.toFixed(2)}</div>
+                <div class="history-details">
+                    <div class="history-detail-row">
+                        <span class="history-detail-label">Items</span>
+                        <span class="history-detail-value">${item.count}</span>
+                    </div>
+                    <div class="history-detail-row">
+                        <span class="history-detail-label">Tax</span>
+                        <span class="history-detail-value">${item.taxRate.toFixed(1)}%</span>
+                    </div>
+                    <div class="history-detail-row">
+                        <span class="history-detail-label">Subtotal</span>
+                        <span class="history-detail-value">$${item.subtotal ? item.subtotal.toFixed(2) : (item.total / (1 + item.taxRate/100)).toFixed(2)}</span>
+                    </div>
+                    <div class="history-detail-row">
+                        <span class="history-detail-label">Total</span>
+                        <span class="history-detail-value" style="color: var(--accent-light); font-size: var(--font-size-lg);">$${item.total.toFixed(2)}</span>
+                    </div>
+                </div>
+                <div class="history-games">
+                    <strong>Games:</strong> ${item.games ? item.games.join(', $') : 'N/A'}
+                </div>
+                <div class="history-actions">
+                    <button class="history-action-btn" onclick="restoreFromHistory('${item.id}')">
+                        <i class="fas fa-undo"></i> Restore
+                    </button>
+                    <button class="history-action-btn delete" onclick="deleteHistoryItem('${item.id}')">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
             </div>
-            <div class="history-item-details">
-                <span><i class="fas fa-gamepad"></i> ${item.count} games</span>
-                <span><i class="fas fa-percentage"></i> ${item.taxRate.toFixed(1)}% tax</span>
-                <button class="history-delete-btn" onclick="deleteHistoryItem('${item.id}')" title="Delete this calculation">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
+}
+
+function restoreFromHistory(itemId) {
+    const item = calculationHistory.find(h => h.id === itemId);
+    if (!item) return;
+    
+    // Restore game count
+    document.getElementById('gameCount').value = item.count;
+    updateGameFields();
+    
+    // Restore prices
+    const inputs = document.querySelectorAll('#gameInputs input');
+    if (item.games) {
+        item.games.forEach((price, index) => {
+            if (inputs[index]) {
+                inputs[index].value = price;
+            }
+        });
+    }
+    
+    // Restore tax rate
+    document.getElementById('taxRateSlider').value = item.taxRate;
+    updateTaxDisplay();
+    
+    // Scroll to calculator
+    scrollToSection('calculator');
+    
+    // Recalculate
+    calculateTotal();
+    
+    showNotification('Calculation restored', 'success');
 }
 
 function clearHistory() {
@@ -909,7 +985,7 @@ function displaySearchSuggestions(games, query) {
     
     if (!games || games.length === 0) {
         suggestionsDiv.innerHTML = `
-            <div class="search-no-results">
+            <div class="search-suggestion-item" style="text-align: center; color: var(--text-tertiary);">
                 <i class="fas fa-search"></i>
                 <p>No games found for "${query}"</p>
             </div>
@@ -921,16 +997,15 @@ function displaySearchSuggestions(games, query) {
         const gameTitle = game.displayTitle || game.title || game.name;
         const gameID = game.id || index;
         const gameName = gameTitle.replace(/'/g, "\\'");
-        const gameImage = game.image ? `style="background-image: url('${game.image}'); background-size: cover; background-position: center;"` : '';
-        const rating = game.rating ? ` ★${game.rating.toFixed(1)}` : '';
+        const gameImage = game.image || '';
+        const rating = game.rating ? `★${game.rating.toFixed(1)}` : '';
         
         return `
             <div class="search-suggestion-item" onclick="lookupGamePrices('${gameName}', ${gameID})">
-                <div ${gameImage} style="width: 40px; height: 40px; border-radius: 3px; flex-shrink: 0;"></div>
-                <div style="flex: 1; min-width: 0;">
-                    <span class="suggestion-title">${gameTitle}</span>
-                    <span class="suggestion-id" style="display: none;">${gameID}</span>
-                    ${rating ? `<div style="font-size: 12px; color: #999; margin-top: 2px;">${rating}</div>` : ''}
+                ${gameImage ? `<img src="${gameImage}" alt="${gameTitle}" class="search-suggestion-thumbnail">` : `<div class="search-suggestion-thumbnail" style="background: var(--bg-primary);"><i class="fas fa-image"></i></div>`}
+                <div class="search-suggestion-info">
+                    <div class="search-suggestion-name">${gameTitle}</div>
+                    ${rating ? `<div class="search-suggestion-meta">${rating}</div>` : `<div class="search-suggestion-meta">Click to view prices</div>`}
                 </div>
             </div>
         `;
@@ -1255,18 +1330,29 @@ function getExpiryText(expiry) {
     })} (in ${days} day${days !== 1 ? "s" : ""})`;
 }
 
-function displayGamePricesLookup(gameName, gameID, gameDetails, pricesData) {
-    // Use searchResultsList for search tab, dealsList otherwise
-    const resultsList = document.getElementById('searchResultsList') || document.getElementById('dealsList');
+function calculateDaysUntilExpiry(expiry) {
+    if (!expiry || isNaN(expiry)) return -1;
     
-    // Store configurations with icons and colors
+    let timestamp = expiry;
+    if (typeof timestamp === 'number' && timestamp < 1e12) {
+        timestamp = timestamp * 1000;
+    }
+    
+    const diff = timestamp - Date.now();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+function displayGamePricesLookup(gameName, gameID, gameDetails, pricesData) {
+    const resultsList = document.getElementById('dealsList');
+    
+    // Store configurations
     const storeConfigs = {
-        'steam': { name: 'Steam', icon: 'fab fa-steam', color: '#1B2838' },
-        'gog': { name: 'GOG', icon: 'fas fa-gamepad', color: '#86328C' },
-        'ubisoft': { name: 'Ubisoft+', icon: 'fas fa-play-circle', color: '#002841' },
-        'xbox': { name: 'Xbox Game Pass', icon: 'fab fa-xbox', color: '#107C10' },
-        'humble': { name: 'Humble Bundle', icon: 'fas fa-gift', color: '#D67D3A' },
-        'fanatical': { name: 'Fanatical', icon: 'fas fa-star', color: '#FF6B35' }
+        'steam': { name: 'Steam', icon: 'fab fa-steam' },
+        'gog': { name: 'GOG', icon: 'fas fa-disc' },
+        'ubisoft': { name: 'Ubisoft+', icon: 'fas fa-play-circle' },
+        'xbox': { name: 'Xbox Game Pass', icon: 'fab fa-xbox' },
+        'humble': { name: 'Humble Bundle', icon: 'fas fa-gift' },
+        'fanatical': { name: 'Fanatical', icon: 'fas fa-star' }
     };
     
     // Group prices by store
@@ -1280,127 +1366,99 @@ function displayGamePricesLookup(gameName, gameID, gameDetails, pricesData) {
             const shopName = (shop.shop && shop.shop.name) ? shop.shop.name.toLowerCase() : '';
             let storeKey = null;
             
-            // Match store name to store key
-            if (shopName.includes('steam')) {
-                storeKey = 'steam';
-            } else if (shopName.includes('gog') || shopName.includes('good old games')) {
-                storeKey = 'gog';
-            } else if (shopName.includes('ubisoft')) {
-                storeKey = 'ubisoft';
-            } else if (shopName.includes('xbox') || shopName.includes('microsoft')) {
-                storeKey = 'xbox';
-            } else if (shopName.includes('humble')) {
-                storeKey = 'humble';
-            } else if (shopName.includes('fanatical') || shopName.includes('bundlestars')) {
-                storeKey = 'fanatical';
-            }
+            if (shopName.includes('steam')) storeKey = 'steam';
+            else if (shopName.includes('gog')) storeKey = 'gog';
+            else if (shopName.includes('ubisoft')) storeKey = 'ubisoft';
+            else if (shopName.includes('xbox') || shopName.includes('microsoft')) storeKey = 'xbox';
+            else if (shopName.includes('humble')) storeKey = 'humble';
+            else if (shopName.includes('fanatical')) storeKey = 'fanatical';
             
-            // Only add if we have valid pricing data
             if (storeKey && shop.price !== undefined && shop.regular !== undefined) {
                 const currentPrice = parseFloat(shop.price);
                 const normalPrice = parseFloat(shop.regular);
                 
-                // Only add if prices are valid and positive
                 if (currentPrice >= 0 && normalPrice > 0 && currentPrice <= normalPrice) {
                     storeMap[storeKey].prices.push({
                         price: currentPrice,
                         originalPrice: normalPrice,
                         discount: Math.round((1 - currentPrice / normalPrice) * 100),
-                        url: shop.url || '#',
-                        drm: shop.drm || [],
-                        shopName: shop.shop?.name || storeConfigs[storeKey].name
+                        url: shop.url || '#'
                     });
                 }
             }
         });
     }
     
-    // Filter stores that have valid prices
+    // Filter stores with prices and sort by best price
     const storesWithPrices = Object.keys(storeMap)
         .filter(key => storeMap[key].prices.length > 0)
         .sort((a, b) => {
-            // Sort by best price
             const priceA = Math.min(...storeMap[a].prices.map(p => p.price));
             const priceB = Math.min(...storeMap[b].prices.map(p => p.price));
             return priceA - priceB;
         });
     
-    // Determine which stores don't have pricing data (to show search links)
-    const storesWithoutPrices = Object.keys(storeMap)
-        .filter(key => storeMap[key].prices.length === 0)
-        .filter(key => key !== 'gog'); // Remove GOG from search links - only show if game is available
-    
-    // Display prices per store
+    // Generate deal cards
     let htmlContent = '';
     
     if (storesWithPrices.length === 0) {
-        // No prices found, show search links for available stores only
         htmlContent = `
-            <div class="deal-item no-price">
+            <div class="deal-card">
                 <div class="deal-header">
                     <h3 class="deal-title">${gameName}</h3>
                 </div>
-                
-                <div class="deal-meta">
-                    <p style="margin: 0; font-size: 13px; color: #999;">
-                        <i class="fas fa-info-circle"></i>
-                        Price data unavailable. Search stores:
+                <div class="deal-body" style="text-align: center; padding: var(--spacing-lg);">
+                    <p style="margin: 0; color: var(--text-tertiary);">
+                        <i class="fas fa-info-circle"></i> Price data unavailable
                     </p>
                 </div>
-                
-                <div class="deal-details" style="gap: 8px;">
-                    <a href="javascript:openSteamGame('${gameName}')" class="deal-btn" style="text-decoration: none; flex: 1;">
-                        <i class="fab fa-steam"></i> Steam
-                    </a>
-                </div>
-                
-                <div class="deal-details">
-                    <button class="deal-btn quick-add" onclick="addGameManual('${gameName}')" style="flex: 1;">
-                        <i class="fas fa-plus-circle"></i> Add Manually
+                <div class="deal-footer">
+                    <button class="deal-link" onclick="addGameManual('${gameName}')">
+                        <i class="fas fa-plus"></i> Add to Calculator
                     </button>
                 </div>
             </div>
         `;
     } else {
-        // Display all stores with prices, sorted by best price
         storesWithPrices.forEach(storeKey => {
             const store = storeMap[storeKey];
             const bestPrice = store.prices.reduce((min, p) => p.price < min.price ? p : min);
             
             htmlContent += `
-                <div class="deal-item">
+                <div class="deal-card">
                     <div class="deal-header">
                         <h3 class="deal-title">${gameName}</h3>
-                        <span class="deal-discount${bestPrice.discount > 20 ? ' hot-deal' : ''}">${bestPrice.discount > 0 ? '-' + bestPrice.discount + '%' : 'Full Price'}</span>
-                    </div>
-                    
-                    <div class="deal-meta">
-                        <div class="store-badge steam" style="background-color: #1b2838; border: 2px solid #66c0f4; color: #66c0f4; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; font-weight: 600;">
-                            <i class="fab fa-steam" style="font-size: 1.2rem;"></i> ${store.name}
+                        <div class="deal-badges">
+                            <span class="badge">${bestPrice.discount > 0 ? '-' + bestPrice.discount + '%' : 'Full Price'}</span>
                         </div>
                     </div>
                     
-                    <div class="deal-details">
+                    <div class="deal-body">
                         <div class="deal-prices">
-                            <span class="deal-price-current">$${bestPrice.price.toFixed(2)}</span>
-                            ${bestPrice.discount > 0 ? `<span class="deal-price-original">$${bestPrice.originalPrice.toFixed(2)}</span>` : ''}
-                            ${bestPrice.discount > 0 ? `<div class="deal-savings">Save $${(bestPrice.originalPrice - bestPrice.price).toFixed(2)}</div>` : ''}
+                            <div class="price-item">
+                                <div class="price-label">Price</div>
+                                <div class="price-value">$${bestPrice.price.toFixed(2)}</div>
+                                ${bestPrice.discount > 0 ? `<div class="original-price">Was $${bestPrice.originalPrice.toFixed(2)}</div>` : ''}
+                            </div>
+                            <div class="price-item">
+                                <div class="price-label">Save</div>
+                                <div class="price-value" style="color: var(--success);">$${(bestPrice.originalPrice - bestPrice.price).toFixed(2)}</div>
+                                <div class="discount-label">${bestPrice.discount}% off</div>
+                            </div>
                         </div>
-                        
-                        <div class="deal-actions">
-                            <button class="deal-btn quick-add" onclick="addGameWithPrice('${gameName}', ${bestPrice.price})">
-                                <i class="fas fa-plus-circle"></i> Add
-                            </button>
-                            <a href="${bestPrice.url || '#'}" target="_blank" class="deal-btn" style="text-decoration: none;">
-                                <i class="fas fa-external-link-alt"></i> View
-                            </a>
-                        </div>
+                    </div>
+                    
+                    <div class="deal-footer">
+                        <button class="deal-link" onclick="addGameWithPrice('${gameName}', ${bestPrice.price})">
+                            <i class="fas fa-plus"></i> Add to Calculator
+                        </button>
+                        <a href="${bestPrice.url}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
+                            <i class="fas fa-external-link-alt"></i> View on ${store.name}
+                        </a>
                     </div>
                 </div>
             `;
         });
-        
-        // Don't show "Check other stores" - only show actual results with prices
     }
     
     resultsList.innerHTML = htmlContent;
@@ -1552,9 +1610,10 @@ async function loadDeals(forceRefresh = false) {
             const discount = d.discountPercent || d.discount || 0;
             
             // Keep deals where: price < original AND discount > 0
-            return salePrice < normalPrice && discount > 0;
+            // Also filter out absurdly high prices (max $1000)
+            return salePrice < normalPrice && discount > 0 && salePrice < 1000 && normalPrice < 1000;
         });
-        console.log(`Filtered deals: ${deals.length} deals after removing fake discounts`);
+        console.log(`Filtered deals: ${deals.length} deals after removing fake discounts and invalid prices`);
         
         // Cache the results
         currentDeals = deals;
@@ -1621,33 +1680,47 @@ async function fetchDealsWithCredentials() {
         }
 
         // Transform API response to client-side format
-        return apiResponse.deals.map(deal => ({
-            // Normalized from API
-            title: deal.title,
-            price: deal.salePrice,
-            originalPrice: deal.normalPrice,
-            discountPercent: deal.discount,
-            discount: deal.discount,
-            expirationDate: deal.expiry, // Unix timestamp (seconds) - will be handled by getExpiryText
-            type: deal.type,
-            store: deal.store,
-            source: deal.source,
+        return apiResponse.deals.map(deal => {
+            // Ensure prices are in dollars, not cents
+            // If price > 100, it's likely in cents (e.g., 4990 cents = $49.90)
+            let salePrice = parseFloat(deal.salePrice) || 0;
+            let normalPrice = parseFloat(deal.normalPrice) || 0;
             
-            // Derived data
-            platform: 'steam',
-            rating: 4.5,
-            storeID: '1',
-            storeName: 'Steam',
+            if (salePrice > 100) {
+                salePrice = salePrice / 100;
+            }
+            if (normalPrice > 100) {
+                normalPrice = normalPrice / 100;
+            }
             
-            // IDs
-            steamAppID: deal.steamAppID,
-            appId: deal.steamAppID,
-            id: deal.steamAppID,
-            
-            // URLs - use getSteamUrl function
-            storeUrl: getSteamUrl({ steamAppID: deal.steamAppID, title: deal.title }),
-            dealUrl: getSteamUrl({ steamAppID: deal.steamAppID, title: deal.title })
-        }));
+            return {
+                // Normalized from API
+                title: deal.title,
+                price: salePrice,
+                originalPrice: normalPrice,
+                discountPercent: deal.discount,
+                discount: deal.discount,
+                expirationDate: deal.expiry, // Unix timestamp (seconds) - will be handled by getExpiryText
+                type: deal.type,
+                store: deal.store,
+                source: deal.source,
+                
+                // Derived data
+                platform: 'steam',
+                rating: 4.5,
+                storeID: '1',
+                storeName: 'Steam',
+                
+                // IDs
+                steamAppID: deal.steamAppID,
+                appId: deal.steamAppID,
+                id: deal.steamAppID,
+                
+                // URLs - use getSteamUrl function
+                storeUrl: getSteamUrl({ steamAppID: deal.steamAppID, title: deal.title }),
+                dealUrl: getSteamUrl({ steamAppID: deal.steamAppID, title: deal.title })
+            };
+        });
 
     } catch (error) {
         console.error('❌ Deals fetch error:', error);
@@ -1893,82 +1966,52 @@ function displayDeals(deals) {
     
     if (!deals || deals.length === 0) {
         dealsList.innerHTML = `
-            <div class="empty-history">
+            <div class="empty-state">
                 <i class="fas fa-search"></i>
-                <p>No deals available at the moment</p>
-                <p class="subtext">Please try again later</p>
+                <p>No deals found</p>
+                <p class="subtext">Try refreshing or adjusting your search</p>
             </div>
         `;
         return;
     }
     
-    // Create disclaimer banner and deals list
-    const disclaimerBanner = `
-        <div style="background: #dc2626; border: 2px solid #991b1b; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; font-size: 0.9em; color: #ffffff; box-shadow: 0 0 15px rgba(220, 38, 38, 0.6);">
-            <i class="fas fa-exclamation-triangle" style="font-size: 1.1em; flex-shrink: 0;"></i>
-            <span><strong>Note:</strong> Expiration dates are estimated based on discount levels and are not actual store data. Always check the Steam store for accurate deal end times.</span>
-        </div>
-    `;
-    
-    dealsList.innerHTML = disclaimerBanner + deals.map(deal => {
-        // Apply FIX 3: Handle expiration date properly
+    dealsList.innerHTML = deals.map(deal => {
         const expiryText = getExpiryText(deal.expirationDate);
-        const isExpiringSoon = expiryText.includes('Expires in') && parseInt(expiryText.match(/\d+/)) <= 3;
+        const daysUntilExpiry = calculateDaysUntilExpiry(deal.expirationDate);
+        const isExpiringSoon = daysUntilExpiry >= 0 && daysUntilExpiry <= 3;
         
         return `
-            <div class="deal-item" data-platform="${deal.platform}" 
-                 data-storeid="${deal.storeID || ''}"
-                 data-price="${deal.price}" data-discount="${deal.discountPercent}" 
-                 data-rating="${deal.rating}" data-expiration="${expiryText}">
+            <div class="deal-card">
                 <div class="deal-header">
                     <h3 class="deal-title">${deal.title}</h3>
-                    <span class="deal-discount ${isExpiringSoon ? 'expiring-soon' : ''}">-${deal.discountPercent}%</span>
-                </div>
-                
-                <div class="deal-meta">
-                    <div class="deal-platform ${deal.platform}" title="${deal.storeName}">
-                        ${getStoreIcon(deal.storeName || deal.platform)}
-                        ${deal.storeName || (deal.platform === 'steam' ? 'Steam' : 'Epic Games')}
-                    </div>
-                    
-                    ${deal.metacriticScore ? `
-                        <div class="deal-metacritic">
-                            <i class="fas fa-star"></i>
-                            ${deal.metacriticScore}/100
-                        </div>
-                    ` : ''}
-                    
-                    ${deal.releaseDate ? `
-                        <div class="deal-release">
-                            <i class="fas fa-calendar-alt"></i>
-                            ${deal.releaseDate}
-                        </div>
-                    ` : ''}
-                    
-                    <div class="deal-expiration ${isExpiringSoon ? 'expiring-soon' : ''}" title="⚠️ Estimated expiration date based on discount level. Not actual store data.">
-                        <i class="fas fa-hourglass-end"></i>
-                        ${expiryText}
-                        <i class="fas fa-info-circle" style="margin-left: 4px; opacity: 0.6; font-size: 0.85em;"></i>
+                    <div class="deal-badges">
+                        <span class="badge">-${deal.discountPercent}%</span>
+                        ${deal.rating ? `<span class="badge">⭐ ${deal.rating}</span>` : ''}
                     </div>
                 </div>
                 
-                <div class="deal-details">
+                <div class="deal-body">
                     <div class="deal-prices">
-                        <span class="deal-price-current">$${deal.price.toFixed(2)}</span>
-                        <span class="deal-price-original">$${deal.originalPrice.toFixed(2)}</span>
-                        <div class="deal-savings">Save $${(deal.originalPrice - deal.price).toFixed(2)}</div>
+                        <div class="price-item">
+                            <div class="price-label">Current</div>
+                            <div class="price-value">$${deal.price.toFixed(2)}</div>
+                            ${deal.originalPrice > deal.price ? `<div class="original-price">Was $${deal.originalPrice.toFixed(2)}</div>` : ''}
+                        </div>
+                        <div class="price-item">
+                            <div class="price-label">Save</div>
+                            <div class="price-value" style="color: var(--success);">$${(deal.originalPrice - deal.price).toFixed(2)}</div>
+                            <div class="discount-label">${deal.discountPercent}% off</div>
+                        </div>
                     </div>
-                    
-                    <div class="deal-actions">
-                        <button class="deal-btn quick-add" onclick="quickAddToCalculator(${deal.price})" title="Add to calculator">
-                            <i class="fas fa-plus-circle"></i>
-                            Add
-                        </button>
-                        <a href="${deal.storeUrl}" target="_blank" class="deal-btn store" title="Go to store">
-                            <i class="fas fa-shopping-cart"></i>
-                            Store
-                        </a>
-                    </div>
+                </div>
+                
+                <div class="deal-footer">
+                    <button class="deal-link" onclick="quickAddToCalculator(${deal.price})" title="Add to calculator">
+                        <i class="fas fa-plus"></i> Add to Calculator
+                    </button>
+                    <a href="${deal.storeUrl}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
+                        <i class="fas fa-external-link-alt"></i> View Deal
+                    </a>
                 </div>
             </div>
         `;
@@ -2109,31 +2152,18 @@ function quickAddToCalculator(price) {
     }
 }
 
-// Switch between tabs
-function switchTab(tabName) {
-    // Hide all tabs
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.style.display = 'none';
-    });
-    
-    // Remove active class from all buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Show selected tab
-    if (tabName === 'calculator') {
-        document.getElementById('calculatorTab').style.display = 'block';
-    } else if (tabName === 'deals') {
-        document.getElementById('dealsTab').style.display = 'block';
-    } else if (tabName === 'search') {
-        document.getElementById('searchTab').style.display = 'block';
-    } else if (tabName === 'history') {
-        document.getElementById('historyTab').style.display = 'block';
+// Dashboard Navigation - Scroll to Section
+function scrollToSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (section) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-    
-    // Set active button
-    event.target.classList.add('active');
+}
+
+// Toggle Settings Panel
+function toggleSettings() {
+    const settingsPanel = document.getElementById('settingsPanel');
+    settingsPanel.classList.toggle('open');
 }
 
 // Open Steam game by fetching URL
