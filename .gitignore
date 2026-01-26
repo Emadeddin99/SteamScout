@@ -57,6 +57,9 @@ test-results/
 
 # Editor backups
 *.code-workspace
+<<<<<<< HEAD
 
 .vercel
 .env*.local
+=======
+>>>>>>> 99c5780e674f3e34f8ef09407175d095e8d4f430
