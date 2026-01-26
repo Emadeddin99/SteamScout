@@ -833,7 +833,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 /* ==================== */
-/* SAVE BUTTON - UPDATED WITH DESKTOP MARGIN */
+/* SAVE BUTTON - UPDATED FOR BETTER POSITIONING */
 /* ==================== */
 .save-btn {
     padding: 12px 24px; /* More horizontal padding */
@@ -854,13 +854,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
     min-width: 180px; /* Slightly wider */
     width: auto; /* Auto width for desktop */
     flex-shrink: 0; /* Prevent shrinking */
-}
-
-/* Desktop-only: Add right margin to save button */
-@media (min-width: 769px) {
-    .games-summary .save-btn {
-        margin-right: 20px; /* Desktop-only right margin */
-    }
 }
 
 .save-btn:hover:not(:disabled) {
@@ -911,7 +904,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     .save-btn {
         width: 90%; /* 90% width so it's centered with margins */
         min-width: unset; /* Remove min-width on mobile */
-        margin-right: 0; /* Remove right margin on mobile */
+        margin-left: 0; /* Remove left margin */
         margin-top: 8px;
         max-width: 300px; /* Limit max width on mobile */
     }
@@ -1964,7 +1957,6 @@ body.dark-mode .deals-sort select option {
     .save-btn {
         width: 100%;
         justify-content: center;
-        margin-right: 0; /* Remove desktop margin on mobile */
     }
     
     .results-section {
