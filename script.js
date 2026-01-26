@@ -30,7 +30,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Apply dark mode if enabled
     if (darkMode) {
         document.body.classList.add('dark-mode');
-        updateDarkModeButton();
     }
     
     updateGameFields();
@@ -51,6 +50,9 @@ function setupEventListeners() {
     const gameCountInput = document.getElementById('gameCount');
     
     taxRateInput.addEventListener('input', function() {
+        // Remove active class from all preset buttons when slider is moved
+        document.querySelectorAll('.preset-btn').forEach(btn => 
+            btn.classList.remove('active'));
         updateTaxDisplay();
         triggerAutoCalculate();
     });
@@ -79,13 +81,13 @@ function setupEventListeners() {
     });
     
     // Setup tax preset buttons
-    document.querySelectorAll('.tax-preset').forEach(button => {
+    document.querySelectorAll('.preset-btn').forEach(button => {
         button.addEventListener('click', function() {
             const taxRate = parseFloat(this.dataset.tax);
             document.getElementById('taxRateSlider').value = taxRate;
             
             // Update active state
-            document.querySelectorAll('.tax-preset').forEach(btn => 
+            document.querySelectorAll('.preset-btn').forEach(btn => 
                 btn.classList.remove('active'));
             this.classList.add('active');
             
@@ -323,7 +325,12 @@ function calculateTotal() {
 
 function updateResultValue(elementId, newValue) {
     const element = document.getElementById(elementId);
-    const formattedValue = `$${newValue.toFixed(2)}`;
+    const formattedValue = newValue.toLocaleString('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
     
     if (element.textContent !== formattedValue) {
         element.classList.add('value-updating');
@@ -343,6 +350,16 @@ function updatePerGameBreakdown() {
     let html = '';
     let hasGames = false;
     
+    // Helper to format currency
+    const formatPrice = (price) => {
+        return price.toLocaleString('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    };
+    
     inputs.forEach(input => {
         const price = parseFloat(input.value) || 0;
         if (price > 0) {
@@ -354,9 +371,9 @@ function updatePerGameBreakdown() {
                 <div class="breakdown-item">
                     <span>Game ${parseInt(input.dataset.index) + 1}</span>
                     <div class="breakdown-values">
-                        <span class="price">$${price.toFixed(2)}</span>
-                        <span class="tax">+$${gameTax.toFixed(2)} tax</span>
-                        <span class="total">= $${gameTotal.toFixed(2)}</span>
+                        <span class="price">${formatPrice(price)}</span>
+                        <span class="tax">+${formatPrice(gameTax)} tax</span>
+                        <span class="total">= ${formatPrice(gameTotal)}</span>
                     </div>
                 </div>
             `;
@@ -1189,29 +1206,47 @@ async function fetchSteamPrices(gameName) {
         console.log(`Found Steam app ID ${appId} for ${gameName}`);
         
         // Get app details via CORS proxy
-        const steamDetailsUrl = `https://store.steampowered.com/api/appdetails?appids=${appId}`;
+        const steamDetailsUrl = `https://store.steampowered.com/api/appdetails?appids=${appId}&cc=US`;
         const corsDetailsUrl = `https://corsproxy.io/?${encodeURIComponent(steamDetailsUrl)}`;
         
         const detailResponse = await fetch(corsDetailsUrl);
         const detailData = await detailResponse.json();
         
+        console.log(`[STEAM] Fetching: ${steamDetailsUrl}`);
+        console.log(`[STEAM] Response structure:`, Object.keys(detailData || {}));
+        
         if (!detailData || !detailData[appId]?.success) {
             console.log(`Could not fetch details for app ID ${appId}`);
+            console.log(`[STEAM] Response:`, detailData);
             return [];
         }
         
         const appData = detailData[appId].data;
+        console.log(`[STEAM] App data keys:`, Object.keys(appData || {}).slice(0, 20));
         
         // Extract pricing information
         if (!appData.price_overview) {
             console.log(`No pricing data available for ${gameName}`);
-            return [];
+            console.log(`[STEAM] Full app data:`, JSON.stringify(appData, null, 2).substring(0, 500));
+            // Return empty but with Steam URL for manual pricing
+            return [{
+                shop: { name: 'Steam' },
+                price: 0,
+                regular: 0,
+                url: getSteamUrl({ id: appId, title: gameName }),
+                discount: 0,
+                active: 1,
+                source: 'steam',
+                noPriceData: true
+            }];
         }
         
         const pricing = appData.price_overview;
         const finalPrice = pricing.final / 100;
         const initialPrice = pricing.initial / 100;
         const discount = pricing.discount || 0;
+        
+        console.log(`[STEAM] Price found: $${finalPrice} (original: $${initialPrice})`);
         
         // Apply FIX 1: Check for real Steam discount
         let discountPercent = discount;
@@ -1373,17 +1408,29 @@ function displayGamePricesLookup(gameName, gameID, gameDetails, pricesData) {
             else if (shopName.includes('humble')) storeKey = 'humble';
             else if (shopName.includes('fanatical')) storeKey = 'fanatical';
             
-            if (storeKey && shop.price !== undefined && shop.regular !== undefined) {
-                const currentPrice = parseFloat(shop.price);
-                const normalPrice = parseFloat(shop.regular);
-                
-                if (currentPrice >= 0 && normalPrice > 0 && currentPrice <= normalPrice) {
+            if (storeKey) {
+                // Handle entries with no price data (like Steam API failures)
+                if (shop.noPriceData) {
                     storeMap[storeKey].prices.push({
-                        price: currentPrice,
-                        originalPrice: normalPrice,
-                        discount: Math.round((1 - currentPrice / normalPrice) * 100),
-                        url: shop.url || '#'
+                        price: 0,
+                        originalPrice: 0,
+                        discount: 0,
+                        url: shop.url || '#',
+                        noPriceData: true
                     });
+                } else if (shop.price !== undefined && shop.regular !== undefined) {
+                    const currentPrice = parseFloat(shop.price);
+                    const normalPrice = parseFloat(shop.regular);
+                    
+                    // Validate prices: must be realistic (less than $300) and reasonable
+                    if (currentPrice >= 0 && normalPrice > 0 && currentPrice <= normalPrice && currentPrice < 300 && normalPrice < 300) {
+                        storeMap[storeKey].prices.push({
+                            price: currentPrice,
+                            originalPrice: normalPrice,
+                            discount: Math.round((1 - currentPrice / normalPrice) * 100),
+                            url: shop.url || '#'
+                        });
+                    }
                 }
             }
         });
@@ -1424,40 +1471,79 @@ function displayGamePricesLookup(gameName, gameID, gameDetails, pricesData) {
             const store = storeMap[storeKey];
             const bestPrice = store.prices.reduce((min, p) => p.price < min.price ? p : min);
             
-            htmlContent += `
-                <div class="deal-card">
-                    <div class="deal-header">
-                        <h3 class="deal-title">${gameName}</h3>
-                        <div class="deal-badges">
-                            <span class="badge">${bestPrice.discount > 0 ? '-' + bestPrice.discount + '%' : 'Full Price'}</span>
+            // Format currency with commas
+            const formatPrice = (price) => {
+                return price.toLocaleString('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            };
+            
+            // Handle no price data case
+            if (bestPrice.noPriceData) {
+                htmlContent += `
+                    <div class="deal-card">
+                        <div class="deal-header">
+                            <h3 class="deal-title">${gameName}</h3>
+                        </div>
+                        <div class="deal-body" style="text-align: center; padding: var(--spacing-lg);">
+                            <p style="margin: 0; color: var(--text-tertiary);">
+                                <i class="fas fa-info-circle"></i> Price data unavailable
+                            </p>
+                        </div>
+                        <div class="deal-footer">
+                            <button class="deal-link" onclick="addGameManual('${gameName}')">
+                                <i class="fas fa-plus"></i> Add to Calculator
+                            </button>
+                            <a href="${bestPrice.url}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
+                                <i class="fas fa-external-link-alt"></i> Visit Steam
+                            </a>
                         </div>
                     </div>
-                    
-                    <div class="deal-body">
-                        <div class="deal-prices">
-                            <div class="price-item">
-                                <div class="price-label">Price</div>
-                                <div class="price-value">$${bestPrice.price.toFixed(2)}</div>
-                                ${bestPrice.discount > 0 ? `<div class="original-price">Was $${bestPrice.originalPrice.toFixed(2)}</div>` : ''}
-                            </div>
-                            <div class="price-item">
-                                <div class="price-label">Save</div>
-                                <div class="price-value" style="color: var(--success);">$${(bestPrice.originalPrice - bestPrice.price).toFixed(2)}</div>
-                                <div class="discount-label">${bestPrice.discount}% off</div>
+                `;
+            } else {
+                const savings = bestPrice.originalPrice - bestPrice.price;
+                
+                htmlContent += `
+                    <div class="deal-card">
+                        <div class="deal-header">
+                            <h3 class="deal-title">${gameName}</h3>
+                            <div class="deal-badges">
+                                <span class="badge">${bestPrice.discount > 0 ? '-' + bestPrice.discount + '%' : 'Full Price'}</span>
                             </div>
                         </div>
+                        
+                        <div class="deal-body">
+                            <div class="deal-prices">
+                                <div class="price-item">
+                                    <div class="price-label">Full Price</div>
+                                    <div class="price-value">${formatPrice(bestPrice.originalPrice)}</div>
+                                </div>
+                                <div class="price-item">
+                                    <div class="price-label">Current Price</div>
+                                    <div class="price-value">${formatPrice(bestPrice.price)}</div>
+                                    ${bestPrice.discount > 0 ? `<div class="discount-label">${bestPrice.discount}% off</div>` : ''}
+                                </div>
+                                <div class="price-item">
+                                    <div class="price-label">Save</div>
+                                    <div class="price-value" style="color: var(--success);">${formatPrice(savings)}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="deal-footer">
+                            <button class="deal-link" onclick="addGameWithPrice('${gameName}', ${bestPrice.price})">
+                                <i class="fas fa-plus"></i> Add to Calculator
+                            </button>
+                            <a href="${bestPrice.url}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
+                                <i class="fas fa-external-link-alt"></i> Visit Steam
+                            </a>
+                        </div>
                     </div>
-                    
-                    <div class="deal-footer">
-                        <button class="deal-link" onclick="addGameWithPrice('${gameName}', ${bestPrice.price})">
-                            <i class="fas fa-plus"></i> Add to Calculator
-                        </button>
-                        <a href="${bestPrice.url}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
-                            <i class="fas fa-external-link-alt"></i> View on ${store.name}
-                        </a>
-                    </div>
-                </div>
-            `;
+                `;
+            }
         });
     }
     

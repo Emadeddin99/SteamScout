@@ -235,10 +235,6 @@ a:hover {
     .nav-label {
         display: inline;
     }
-    
-    .settings-btn .nav-label {
-        display: none;
-    }
 }
 
 /* ============================================
@@ -502,44 +498,47 @@ a:hover {
 
 .tax-slider {
     width: 100%;
-    height: 6px;
-    border-radius: 3px;
-    background: var(--border-color);
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(to right, var(--accent), var(--accent-light));
     outline: none;
     -webkit-appearance: none;
     appearance: none;
     margin-bottom: var(--spacing-md);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
 }
 
 .tax-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     background: var(--accent);
     cursor: pointer;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
     transition: all var(--transition-fast);
 }
 
 .tax-slider::-webkit-slider-thumb:hover {
     transform: scale(1.2);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5);
 }
 
 .tax-slider::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     background: var(--accent);
     cursor: pointer;
     border: none;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
     transition: all var(--transition-fast);
 }
 
 .tax-slider::-moz-range-thumb:hover {
     transform: scale(1.2);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5);
 }
 
 .slider-labels {
@@ -1024,6 +1023,9 @@ a:hover {
     }
 }
 
+/* ============================================
+   DEAL CARDS - IMPROVED LAYOUT
+   ============================================ */
 .deal-card {
     background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
@@ -1032,6 +1034,7 @@ a:hover {
     transition: all var(--transition-base);
     display: flex;
     flex-direction: column;
+    height: 100%;
 }
 
 .deal-card:hover {
@@ -1053,9 +1056,11 @@ a:hover {
     margin-bottom: var(--spacing-sm);
     line-height: 1.3;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
     overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .deal-badges {
@@ -1079,6 +1084,9 @@ a:hover {
     border-color: var(--success);
 }
 
+/* ============================================
+   DEAL BODY - Price Grid Layout
+   ============================================ */
 .deal-body {
     padding: var(--spacing-md);
     flex: 1;
@@ -1088,38 +1096,68 @@ a:hover {
 }
 
 .deal-prices {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    flex-direction: column;
     gap: var(--spacing-sm);
 }
 
 .price-item {
-    text-align: center;
-    padding: var(--spacing-sm);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-sm) var(--spacing-md);
     background: var(--bg-primary);
     border-radius: var(--radius-sm);
+    border-left: 3px solid var(--border-color);
+    transition: all var(--transition-fast);
+}
+
+.price-item:first-child {
+    border-left-color: var(--text-tertiary);
+}
+
+.price-item:nth-child(2) {
+    border-left-color: var(--accent);
+    background: rgba(245, 158, 11, 0.05);
+}
+
+.price-item:nth-child(3) {
+    border-left-color: var(--success);
+    background: rgba(16, 185, 129, 0.05);
 }
 
 .price-label {
-    font-size: var(--font-size-xs);
-    color: var(--text-tertiary);
-    margin-bottom: var(--spacing-xs);
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: 500;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+    flex: 1;
 }
 
 .price-value {
     font-size: var(--font-size-lg);
     font-weight: 700;
     color: var(--accent-light);
+    text-align: right;
+}
+
+.price-item:nth-child(3) .price-value {
+    color: var(--success);
 }
 
 .original-price {
+    display: block;
     text-decoration: line-through;
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
     color: var(--text-tertiary);
+    margin-top: var(--spacing-xs);
 }
 
 .discount-label {
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xs);
     color: var(--text-tertiary);
     font-weight: 600;
 }
@@ -1139,163 +1177,18 @@ a:hover {
     color: var(--warning);
 }
 
+/* ============================================
+   DEAL FOOTER - Button Layout
+   ============================================ */
 .deal-footer {
     padding: var(--spacing-md);
     border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
 }
 
 .deal-link {
-    width: 100%;
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--primary-light);
-    color: white;
-    border: none;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    font-weight: 600;
-    transition: all var(--transition-fast);
-}
-
-.deal-link:hover {
-    background: var(--accent);
-}
-
-.loading-deals {
-    grid-column: 1 / -1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: var(--spacing-3xl);
-    color: var(--text-tertiary);
-}
-
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid var(--border-color);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: var(--spacing-md);
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* ============================================
-   HISTORY SECTION
-   ============================================ */
-.history-section {
-    background: var(--bg-secondary);
-    padding: var(--spacing-lg);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-color);
-    box-shadow: var(--shadow-md);
-}
-
-.history-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--spacing-lg);
-}
-
-.history-count {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    color: var(--text-secondary);
-    font-weight: 600;
-}
-
-.history-count i {
-    color: var(--accent);
-}
-
-.clear-history-btn {
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--danger);
-    border: 1px solid var(--danger);
-    border-radius: var(--radius-md);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-}
-
-.clear-history-btn:hover {
-    background: var(--danger);
-    color: white;
-}
-
-.history-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: var(--spacing-lg);
-}
-
-@media (max-width: 640px) {
-    .history-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-.history-card-item {
-    background: var(--bg-tertiary);
-    padding: var(--spacing-lg);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--border-color);
-    transition: all var(--transition-base);
-}
-
-.history-card-item:hover {
-    border-color: var(--accent);
-    box-shadow: var(--shadow-md);
-}
-
-.history-timestamp {
-    font-size: var(--font-size-xs);
-    color: var(--text-tertiary);
-    margin-bottom: var(--spacing-sm);
-}
-
-.history-details {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-lg);
-}
-
-.history-detail-row {
-    display: flex;
-    justify-content: space-between;
-}
-
-.history-detail-label {
-    font-size: var(--font-size-sm);
-    color: var(--text-tertiary);
-}
-
-.history-detail-value {
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.history-games {
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
-    padding-top: var(--spacing-md);
-    border-top: 1px solid var(--border-color);
-}
-
-.history-actions {
-    display: flex;
-    gap: var(--spacing-sm);
-    margin-top: var(--spacing-md);
-}
-
-.history-action-btn {
     flex: 1;
     padding: var(--spacing-sm) var(--spacing-md);
     background: var(--primary-light);
@@ -1303,60 +1196,29 @@ a:hover {
     border: none;
     border-radius: var(--radius-sm);
     cursor: pointer;
-    font-size: var(--font-size-sm);
+    font-weight: 600;
     transition: all var(--transition-fast);
+    font-size: var(--font-size-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
 }
 
-.history-action-btn:hover {
+.deal-link:hover {
     background: var(--accent);
+    transform: translateY(-1px);
 }
 
-.history-action-btn.delete {
-    background: rgba(239, 68, 68, 0.2);
-    color: var(--danger);
+.deal-link:nth-of-type(2) {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success);
+    border: 1px solid var(--success);
 }
 
-.history-action-btn.delete:hover {
-    background: var(--danger);
+.deal-link:nth-of-type(2):hover {
+    background: var(--success);
     color: white;
-}
-
-/* ============================================
-   FOOTER
-   ============================================ */
-.footer {
-    background: var(--bg-secondary);
-    border-top: 1px solid var(--border-color);
-    padding: var(--spacing-xl) var(--spacing-md);
-    margin-top: var(--spacing-3xl);
-}
-
-.footer-content {
-    max-width: 1600px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--spacing-lg);
-}
-
-.footer-info {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    color: var(--text-tertiary);
-    font-size: var(--font-size-sm);
-}
-
-.footer-links {
-    text-align: right;
-    font-size: var(--font-size-sm);
-    color: var(--text-tertiary);
-}
-
-.footer-links p {
-    margin: 0;
 }
 
 /* ============================================
