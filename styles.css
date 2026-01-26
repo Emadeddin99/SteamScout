@@ -859,7 +859,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
 /* Desktop-only: Add right margin to save button */
 @media (min-width: 769px) {
     .games-summary .save-btn {
-        margin-right: 50px; /* Desktop-only right margin */
+        margin-right: 20px; /* Desktop-only right margin */
     }
 }
 
