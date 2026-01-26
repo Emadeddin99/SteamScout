@@ -55,10 +55,9 @@ body.dark-mode {
 
 .container {
     max-width: 1700px;
+    width: 100%;
+    padding: 0 16px;
     margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
 }
 
 /* Header */
@@ -94,6 +93,16 @@ body.dark-mode {
     flex-wrap: wrap;
     gap: 15px;
 }
+
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    overflow-x: hidden;
+}
+
 
 .logo-title {
     display: flex;
@@ -1898,4 +1907,34 @@ body.dark-mode .deals-sort select option {
     padding: 3px 8px;
     border-radius: 999px;
     display: inline-block;
+}
+
+@media (max-width: 768px) {
+
+    header {
+        flex-direction: column;
+        text-align: center;
+        gap: 12px;
+    }
+
+    h1 {
+        font-size: 1.8rem;
+    }
+
+    .tagline {
+        font-size: 0.95rem;
+    }
+
+    .search-bar {
+        width: 100%;
+    }
+
+    .filters {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    button {
+        width: 100%;
+    }
 }
