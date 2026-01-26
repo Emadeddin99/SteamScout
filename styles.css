@@ -1,4 +1,4 @@
-/* styles.css - Final optimized sizing */
+/* styles.css - Final optimized sizing with Desktop Centering Fix */
 
 :root {
     /* Steam-inspired color palette */
@@ -104,7 +104,6 @@ html, body {
     width: 100%;
     overflow-x: hidden;
 }
-
 
 .logo-title {
     display: flex;
@@ -266,29 +265,67 @@ html, body {
     box-shadow: 0 8px 20px rgba(0, 173, 238, 0.4);
 }
 
-/* Main Content Layout - FINAL OPTIMIZED SIZING */
+/* Main Content Layout - FINAL OPTIMIZED SIZING with Desktop Centering Fix */
 .main-content {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center; /* Centers the whole group */
+    gap: 24px;
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 24px 0;
+    animation: slideIn 0.6s ease 0.1s backwards;
 }
 
-/* For larger screens, use 3-column layout centered with Game Prices bigger */
+/* Individual card containers */
+.config-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 380px; /* Wider card width */
+    width: 100%;
+}
+
+.games-section {
+    display: flex;
+    flex-direction: column;
+    max-width: 380px; /* Wider card width */
+    width: 100%;
+}
+
+.results-section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    max-width: 380px; /* Wider card width */
+    width: 100%;
+}
+
+/* For larger screens, use 3-column layout */
 @media (min-width: 1200px) {
     .main-content {
-        grid-template-columns: 0.9fr 1.4fr 0.9fr;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr; /* Equal width columns */
+        justify-items: center; /* Center cards within grid cells */
         max-width: 1300px;
         margin: 0 auto;
-        gap: 16px;
+        gap: 24px;
+        padding: 24px 0;
+    }
+    
+    .config-section,
+    .games-section,
+    .results-section {
+        max-width: 100%; /* Let cards fill their grid cells */
+        width: 100%;
     }
 }
 
 /* For extra large screens, increase max-width */
 @media (min-width: 1800px) {
     .main-content {
-        grid-template-columns: 1fr 1.6fr 1fr;
         max-width: 1500px;
-        margin: 0 auto;
+        grid-template-columns: 1fr 1.6fr 1fr;
     }
 }
 
@@ -303,6 +340,14 @@ html, body {
     overflow: hidden;
     transition: all 0.3s ease;
     animation: slideIn 0.6s ease 0.1s backwards;
+    width: 100%; /* Ensure card takes full width of container */
+}
+
+/* For desktop: Make cards wider but controlled */
+@media (min-width: 768px) {
+    .card {
+        max-width: 380px; /* ⬅️ wider than before */
+    }
 }
 
 .card:hover {
@@ -406,22 +451,30 @@ html, body {
     min-width: 50px;
 }
 
+/* ==================== */
+/* GAME COUNTER - CENTERED IN ITS CARD */
+/* ==================== */
 .config-control {
     display: flex;
     gap: 12px;
     align-items: center;
+    justify-content: center; /* Center the counter controls */
+    width: 100%;
 }
 
 .counter-control {
     display: flex;
     align-items: center;
+    justify-content: center; /* Center the counter */
     flex: 1;
-    gap: 8px;
+    gap: 15px; /* More gap between buttons and input */
+    max-width: 300px; /* Limit width */
+    margin: 0 auto; /* Center horizontally */
 }
 
 .counter-btn {
-    width: 32px; /* Smaller */
-    height: 32px; /* Smaller */
+    width: 40px; /* Slightly larger */
+    height: 40px; /* Slightly larger */
     background: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
@@ -430,7 +483,7 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.9rem;
+    font-size: 1rem;
     transition: all 0.3s ease;
     flex-shrink: 0;
 }
@@ -444,18 +497,37 @@ html, body {
 }
 
 .config-control input[type="number"] {
-    flex: 1;
-    padding: 8px 10px; /* Smaller padding */
+    flex: 0 1 80px; /* Fixed width for input */
+    padding: 10px 12px;
     background: rgba(255, 255, 255, 0.07);
     color: var(--light);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
-    font-size: 0.95rem;
+    font-size: 1.1rem; /* Larger font */
     text-align: center;
-    font-weight: 600;
+    font-weight: 700;
     transition: all 0.3s ease;
-    min-width: 65px; /* Smaller */
-    max-width: 80px; /* Smaller */
+    min-width: 80px;
+    max-width: 100px;
+}
+
+/* Desktop: Update button positioning */
+@media (min-width: 769px) {
+    .config-control {
+        justify-content: space-between; /* Update button on right, counter centered */
+        flex-wrap: nowrap;
+    }
+    
+    .counter-control {
+        justify-content: center;
+        margin: 0;
+        order: 1; /* Make counter come first */
+    }
+    
+    .update-btn {
+        order: 2; /* Make update button come second */
+        margin-left: auto; /* Push to the right */
+    }
 }
 
 /* Hide number input spinner arrows */
@@ -724,16 +796,16 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 /* ==================== */
-/* GAMES SUMMARY SECTION - FIXED */
+/* GAMES SUMMARY SECTION - UPDATED FOR BETTER CENTERING */
 /* ==================== */
 .games-summary {
     padding: 22px; /* More padding */
     border-top: 1px solid rgba(255, 255, 255, 0.05);
     display: flex;
-    justify-content: space-between; /* Desktop: space between */
+    justify-content: space-between; /* Changed from center to space-between */
     align-items: center;
     background: rgba(0, 0, 0, 0.2);
-    gap: 12px;
+    gap: 20px; /* Increased gap */
     flex-wrap: wrap;
 }
 
@@ -750,6 +822,8 @@ input[type="range"]::-webkit-slider-thumb:hover {
     border: 1px solid rgba(91, 163, 43, 0.3);
     flex: 1;
     min-width: 200px;
+    justify-content: center; /* Center text in info badge */
+    text-align: center;
 }
 
 .summary-info span {
@@ -759,10 +833,10 @@ input[type="range"]::-webkit-slider-thumb:hover {
 }
 
 /* ==================== */
-/* SAVE BUTTON - FIXED FOR DESKTOP & MOBILE */
+/* SAVE BUTTON - UPDATED WITH DESKTOP MARGIN */
 /* ==================== */
 .save-btn {
-    padding: 12px 22px;
+    padding: 12px 24px; /* More horizontal padding */
     background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
     color: white;
     border: none;
@@ -777,10 +851,16 @@ input[type="range"]::-webkit-slider-thumb:hover {
     transition: all 0.3s ease;
     box-shadow: 0 6px 15px rgba(255, 107, 53, 0.3);
     white-space: nowrap;
-    min-width: 160px; /* Fixed width for desktop */
+    min-width: 180px; /* Slightly wider */
     width: auto; /* Auto width for desktop */
     flex-shrink: 0; /* Prevent shrinking */
-    align-self: center; /* Align to center */
+}
+
+/* Desktop-only: Add right margin to save button */
+@media (min-width: 769px) {
+    .games-summary .save-btn {
+        margin-right: 50px; /* Desktop-only right margin */
+    }
 }
 
 .save-btn:hover:not(:disabled) {
@@ -796,21 +876,17 @@ input[type="range"]::-webkit-slider-thumb:hover {
     box-shadow: none !important;
 }
 
-/* Desktop: Save button stays right-aligned with proper width */
+/* Desktop: Center the content with save button slightly to the right */
 @media (min-width: 769px) {
     .games-summary {
-        display: flex;
-        justify-content: space-between; /* Right align save button */
-        align-items: center;
+        justify-content: space-between; /* Keep space-between for desktop */
+        position: relative;
     }
     
     .summary-info {
-        margin-right: auto; /* Push save button to the right */
-    }
-    
-    .save-btn {
-        margin-left: auto; /* Ensure it stays on the right */
-        min-width: 160px; /* Fixed width for desktop */
+        flex: 0 1 auto; /* Don't grow, just be auto width */
+        min-width: 200px;
+        margin: 0;
     }
 }
 
@@ -818,21 +894,26 @@ input[type="range"]::-webkit-slider-thumb:hover {
 @media (max-width: 768px) {
     .games-summary {
         flex-direction: column;
-        gap: 10px;
+        gap: 15px; /* More gap on mobile */
         padding: 15px;
+        justify-content: center; /* Center vertically */
+        align-items: center; /* Center horizontally */
     }
     
     .summary-info {
         width: 100%;
         margin-right: 0;
         min-width: 100%;
+        justify-content: center;
+        text-align: center;
     }
     
     .save-btn {
-        width: 100%;
+        width: 90%; /* 90% width so it's centered with margins */
         min-width: unset; /* Remove min-width on mobile */
-        margin-left: 0;
+        margin-right: 0; /* Remove right margin on mobile */
         margin-top: 8px;
+        max-width: 300px; /* Limit max width on mobile */
     }
 }
 
@@ -1453,7 +1534,7 @@ body.dark-mode .deals-sort select option {
     padding: 15px;
     overflow-y: auto;
     max-height: 380px;
-    background: rgba(0, 0, 255, 0.02);
+    background: rgba(0, 0, 0, 0.2);
 }
 
 .deal-item {
@@ -1673,7 +1754,6 @@ body.dark-mode .deals-sort select option {
     to { transform: rotate(360deg); }
 }
 
-
 @keyframes slideIn {
     from { opacity: 0; transform: translateY(-20px); }
     to { opacity: 1; transform: translateY(0); }
@@ -1732,167 +1812,36 @@ body.dark-mode .deals-sort select option {
     background: var(--primary-light);
 }
 
-/* Main Content Layout */
-.main-content {
-    display: grid;
-    grid-template-columns: 340px 0.7fr 420px;
-    gap: 20px;
-    animation: slideIn 0.6s ease 0.1s backwards;
-}
-
-.config-section {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.games-section {
-    display: flex;
-    flex-direction: column;
-}
-
-.results-section {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
 /* Featured Sections (Full Width) */
 .deals-featured {
     animation: slideIn 0.6s ease 0s backwards;
+    width: 100%;
+    max-width: 100%;
 }
 
 .history-featured {
     animation: slideIn 0.6s ease 0.2s backwards;
+    width: 100%;
+    max-width: 100%;
 }
 
-/* Mobile Optimizations for Deals Section */
-@media (max-width: 768px) {
-    .deals-list {
-        max-height: none;
-        max-height: auto;
-        overflow-y: visible;
-        padding: 12px;
-    }
-    
-    .deal-item {
-        padding: 12px;
-        margin-bottom: 10px;
-    }
-    
-    .deal-header {
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .deal-title {
-        margin-right: 0;
-        font-size: 0.95rem;
-    }
-    
-    .deal-discount {
-        align-self: flex-start;
-        font-size: 0.85rem;
-        padding: 3px 8px;
-    }
-    
-    .deal-details {
-        flex-direction: column;
-        gap: 10px;
-        align-items: flex-start;
-    }
-    
-    .deal-prices {
-        width: 100%;
-        flex-wrap: wrap;
-    }
-    
-    .deal-actions {
-        width: 100%;
-        gap: 6px;
-    }
-    
-    .deal-btn {
-        flex: 1;
-        padding: 10px 12px;
-        font-size: 0.8rem;
-        justify-content: center;
-    }
-    
-    .deal-meta {
-        flex-wrap: wrap;
-        gap: 8px;
-    }
-    
-    .deal-platform {
-        font-size: 0.7rem;
-        padding: 2px 6px;
-    }
-    
-    .deal-expiration {
-        font-size: 0.85rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .deals-list {
-        padding: 10px;
-    }
-    
-    .deal-item {
-        padding: 10px;
-        margin-bottom: 8px;
-        border-radius: 8px;
-    }
-    
-    .deal-title {
-        font-size: 0.9rem;
-    }
-    
-    .deal-discount {
-        font-size: 0.8rem;
-        padding: 2px 6px;
-    }
-    
-    .deal-btn {
-        padding: 8px 10px;
-        font-size: 0.75rem;
-        min-height: 36px;
-    }
-    
-    .deal-btn i {
-        font-size: 0.9rem;
-    }
-    
-    .deal-price-current {
-        font-size: 1rem;
-    }
-    
-    .deal-price-original {
-        font-size: 0.8rem;
-    }
-    
-    .deal-savings {
-        font-size: 0.75rem;
-    }
-}
-
-/* Responsive Design */
+/* Responsive Design - Updated with desktop centering fix */
 @media (max-width: 1800px) {
     .main-content {
-        grid-template-columns: 320px 0.65fr 420px;
+        max-width: 1300px;
     }
 }
 
 @media (max-width: 1500px) {
     .main-content {
-        grid-template-columns: 300px 1fr 380px;
+        max-width: 1200px;
     }
 }
 
 @media (max-width: 1200px) {
     .main-content {
         grid-template-columns: 1fr;
+        justify-items: stretch; /* Stretch on tablet */
     }
     
     .deals-featured {
@@ -1903,9 +1852,11 @@ body.dark-mode .deals-sort select option {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 20px;
+        max-width: 100%;
     }
 }
 
+/* Mobile stays perfect - don't break it */
 @media (max-width: 768px) {
     body {
         padding: 12px;
@@ -1939,8 +1890,20 @@ body.dark-mode .deals-sort select option {
     }
     
     .main-content {
-        grid-template-columns: 1fr;
-        gap: 15px;
+        flex-direction: column;
+        align-items: stretch;
+        padding: 16px 0;
+        gap: 16px;
+    }
+    
+    .config-section,
+    .games-section,
+    .results-section {
+        max-width: 100%;
+    }
+    
+    .card {
+        max-width: 100%;
     }
     
     .deals-featured {
@@ -2001,6 +1964,7 @@ body.dark-mode .deals-sort select option {
     .save-btn {
         width: 100%;
         justify-content: center;
+        margin-right: 0; /* Remove desktop margin on mobile */
     }
     
     .results-section {
@@ -2260,7 +2224,6 @@ body.dark-mode .deals-sort select option {
 }
 
 @media (max-width: 768px) {
-
     header {
         flex-direction: column;
         text-align: center;
