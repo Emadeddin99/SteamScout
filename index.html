@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SteamScout</title>
+    <meta name="description" content="Calculate your Steam game purchases with automatic tax calculation, history tracking, and real-time updates.">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="assets/logo.png">
+</head>
+<body>
+    <!-- Configuration Module -->
+    <script src="config.js"></script>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-title">
+                    <div class="logo-icon">
+                        <i class="fa-solid fa-magnifying-glass-dollar"></i>
+                    </div>
+                    <div>
+                        <h1>SteamScout</h1>
+                        <p class="tagline">Scout Steam Deals</p>
+                    </div>
+                </div>
+                <div class="header-controls">
+                    <button class="header-btn" onclick="resetCalculator()" title="Reset Calculator">
+                        <i class="fas fa-redo"></i>
+                        Reset
+                    </button>
+                    <button class="header-btn" onclick="copyToClipboard()" title="Copy Results">
+                        <i class="fas fa-copy"></i>
+                        Copy
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <!-- Tab Navigation -->
+        <div class="tabs-nav">
+            <button class="tab-btn active" onclick="switchTab('calculator')">
+                <i class="fas fa-calculator"></i>
+                Calculator
+            </button>
+            <button class="tab-btn" onclick="switchTab('deals')">
+                <i class="fas fa-fire"></i>
+                Current Deals
+            </button>
+            <button class="tab-btn" onclick="switchTab('search')">
+                <i class="fas fa-search"></i>
+                Search Games
+            </button>
+            <button class="tab-btn" onclick="switchTab('history')">
+                <i class="fas fa-history"></i>
+                History
+            </button>
+        </div>
+
+        <!-- Deals Tab Section -->
+        <section id="dealsTab" class="tab-content" style="display: none;">
+            <div class="card deals-card deals-featured">
+                <div class="card-header">
+                    <i class="fas fa-gift"></i>
+                    <h2>Giveaways</h2>
+                    <div class="auto-badge">
+                        <i class="fas fa-database"></i>
+                        CheapShark API
+                    </div>
+                    <span class="verified-badge">Verified via CheapShark</span>
+                </div>
+                
+                <div class="deals-controls">
+                    <div class="deals-filter">
+                        <button class="deals-filter-btn active" data-platform="all" title="All giveaways">
+                            <i class="fas fa-gift"></i> All Giveaways
+                        </button>
+                        <button class="deals-filter-btn" data-platform="steam" title="Steam giveaways">
+                            <i class="fab fa-steam"></i> Steam Giveaways
+                        </button>
+                    </div>
+                    <div class="deals-sort">
+                        <select id="dealsSort" onchange="sortDeals(this.value)">
+                            <option value="deal">Best Deals First</option>
+                            <option value="discount">Highest Discount %</option>
+                            <option value="price">Price: Low to High</option>
+                            <option value="rating">Highest Rated</option>
+                            <option value="expiring">Expiring Soon</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="dealsList" class="deals-list">
+                    <div class="loading-deals">
+                        <div class="spinner"></div>
+                        <p>Loading current deals...</p>
+                    </div>
+                </div>
+                
+                <div class="deals-footer">
+                    <button class="deals-btn" onclick="refreshDeals()" title="Refresh deals">
+                        <i class="fas fa-sync-alt"></i>
+                        Refresh Deals
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Search Games Tab Section -->
+        <section id="searchTab" class="tab-content" style="display: none;">
+            <div class="card deals-card deals-featured">
+                <div class="card-header">
+                    <i class="fas fa-search"></i>
+                    <h2>Search Games</h2>
+                </div>
+                
+                <!-- Game Search Bar -->
+                <div class="search-bar-container">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input 
+                            type="text" 
+                            id="gameSearchInput" 
+                            class="game-search-input" 
+                            placeholder="Search games by name..."
+                            autocomplete="off"
+                        >
+                        <button id="searchClearBtn" class="search-clear-btn" onclick="clearGameSearch()" title="Clear search">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="searchSuggestions" class="search-suggestions"></div>
+                </div>
+                
+                <div id="searchResultsList" class="deals-list" style="margin-top: 20px;"></div>
+            </div>
+        </section>
+
+        <!-- Calculator Tab Section -->
+        <section id="calculatorTab" class="tab-content">
+            <!-- Main Content Grid -->
+            <div class="main-content">
+                <div class="config-section">
+                <!-- Configuration Card -->
+                <section class="card config-card">
+                    <div class="card-header">
+                        <i class="fas fa-cog"></i>
+                        <h2>Calculator Configuration</h2>
+                    </div>
+                    
+                    <div class="config-group">
+                        <label for="gameCount">
+                            <i class="fas fa-gamepad"></i>
+                            <span class="label-text">Number of Games</span>
+                        </label>
+                        <div class="config-control">
+                            <div class="counter-control">
+                                <button class="counter-btn" onclick="changeGameCount(-1)" title="Decrease game count">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <input type="number" id="gameCount" value="1" min="1" max="50">
+                                <button class="counter-btn" onclick="changeGameCount(1)" title="Increase game count">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                            <button class="update-btn" onclick="updateGameFields()" title="Update game fields">
+                                <i class="fas fa-sync-alt"></i>
+                                Apply
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="config-group">
+                        <label for="taxRateSlider">
+                            <i class="fas fa-percentage"></i>
+                            <span class="label-text">Tax Rate</span>
+                            <span class="label-value" id="currentTax">8%</span>
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" id="taxRateSlider" min="0" max="20" value="8" step="0.5">
+                            <div class="slider-labels">
+                                <span>0%</span>
+                                <span>10%</span>
+                                <span>20%</span>
+                            </div>
+                        </div>
+                        <div class="tax-presets">
+                            <button class="tax-preset" data-tax="0" title="0% Tax">0%</button>
+                            <button class="tax-preset" data-tax="5" title="5% Tax">5%</button>
+                            <button class="tax-preset" data-tax="8" title="8% Tax" class="active">8%</button>
+                            <button class="tax-preset" data-tax="10" title="10% Tax">10%</button>
+                            <button class="tax-preset" data-tax="15" title="15% Tax">15%</button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Quick Actions Card -->
+                <section class="card actions-card">
+                    <div class="card-header">
+                        <i class="fas fa-bolt"></i>
+                        <h2>Quick Actions</h2>
+                    </div>
+                    <div class="actions-grid">
+                        <button class="action-btn" onclick="clearAllPrices()" title="Clear all game prices">
+                            <i class="fas fa-trash-alt"></i>
+                            Clear Prices
+                        </button>
+                        <button class="action-btn" onclick="fillSampleData()" title="Load sample data">
+                            <i class="fas fa-vial"></i>
+                            Sample Data
+                        </button>
+                        <button class="action-btn" onclick="printSummary()" title="Print calculation summary">
+                            <i class="fas fa-print"></i>
+                            Print Summary
+                        </button>
+                        <button class="action-btn" onclick="toggleDarkMode()" title="Toggle dark/light mode">
+                            <i class="fas fa-moon"></i>
+                            <span>Dark Mode</span>
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Center Column: Game Prices -->
+            <div class="games-section">
+                <section class="card games-card">
+                    <div class="card-header">
+                        <i class="fas fa-shopping-cart"></i>
+                        <h2>Game Prices</h2>
+                        <div class="card-stats">
+                            <span class="stat-badge" id="pricedGamesCount">0 games priced</span>
+                            <span class="stat-badge" id="totalGames">Total: 1 game</span>
+                        </div>
+                    </div>
+                    <div id="gameInputs" class="games-grid"></div>
+                    
+                    <!-- Games Summary with Save Button -->
+                    <div class="games-summary">
+                        <div class="summary-info">
+                            <i class="fas fa-info-circle"></i>
+                            <span id="summaryText">Enter prices for all games to enable save</span>
+                        </div>
+                        <button id="saveBtn" class="save-btn" onclick="saveToHistory()" disabled title="Save calculation to history">
+                            <i class="fas fa-save"></i>
+                            Save Calculation
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Column: Results -->
+            <div class="results-section">
+                <!-- Results Card -->
+                <section class="card results-card">
+                    <div class="card-header">
+                        <i class="fas fa-calculator"></i>
+                        <h2>Cost Breakdown</h2>
+                        <div class="auto-badge">
+                            <i class="fas fa-sync-alt fa-spin"></i>
+                            Live Update
+                        </div>
+                    </div>
+                    
+                    <div class="results-grid">
+                        <div class="result-item">
+                            <div class="result-label">
+                                <i class="fas fa-list-ol"></i>
+                                Items
+                            </div>
+                            <div class="result-value" id="itemCount">0</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">
+                                <i class="fas fa-tag"></i>
+                                Subtotal
+                            </div>
+                            <div class="result-value" id="subtotal">$0.00</div>
+                        </div>
+                        
+                        <div class="result-item">
+                            <div class="result-label">
+                                <i class="fas fa-percentage"></i>
+                                Tax (<span id="taxRateDisplay">8%</span>)
+                            </div>
+                            <div class="result-value" id="tax">$0.00</div>
+                        </div>
+                        
+                        <!-- Fixed Total Display -->
+                        <div class="result-item total">
+                            <div class="result-label total-text">
+                                <i class="fas fa-dollar-sign"></i>
+                                <span>
+                                    <span class="total-text-line1">Total</span>
+                                    <span class="total-text-line2">Amount</span>
+                                </span>
+                            </div>
+                            <div class="result-value total-amount" id="total">$0.00</div>
+                        </div>
+                    </div>
+                    
+                    <div class="per-game-breakdown">
+                        <h3><i class="fas fa-gamepad"></i> Per Game Breakdown</h3>
+                        <div id="perGameBreakdown" class="breakdown-list">
+                            <div class="empty-breakdown">
+                                <i class="fas fa-info-circle"></i>
+                                <p>Enter game prices to see per-game breakdown</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            </div>
+        </section>
+
+        <!-- History Tab Section -->
+        <section id="historyTab" class="tab-content" style="display: none;">
+            <section class="card history-card history-featured">
+                <div class="card-header">
+                    <i class="fas fa-history"></i>
+                    <h2>Recent Calculations</h2>
+                    <div class="history-count">
+                        <i class="fas fa-database"></i>
+                        <span id="historyCount">0</span>
+                    </div>
+                </div>
+                
+                <div class="history-controls">
+                    <button class="history-btn" onclick="clearHistory()" title="Clear all history">
+                        <i class="fas fa-trash"></i>
+                        Clear All
+                    </button>
+                    <button class="history-btn" onclick="toggleHistoryView()" title="Toggle compact view">
+                        <i class="fas fa-list"></i>
+                        Toggle View
+                    </button>
+                </div>
+                
+                <div id="historyList" class="history-list">
+                    <div class="empty-history">
+                        <i class="fas fa-clock"></i>
+                        <p>No calculations yet</p>
+                        <p class="subtext">Your saved calculations will appear here</p>
+                    </div>
+                </div>
+            </section>
+        </section>
+
+        <!-- Footer -->
+        <footer>
+            <div class="footer-content">
+                <div class="footer-info">
+                    <i class="fas fa-bolt"></i>
+                    <span>Real-time calculation • Auto-save • No data sent to server</span>
+                </div>
+                <div class="footer-copyright">
+                    <p>© 2024 Steam Price Calculator | Made by Emad Rihan | Not affiliated with Steam</p>
+                    <p class="footer-version">Version 2.2 | Optimized Layout | History View Only</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
