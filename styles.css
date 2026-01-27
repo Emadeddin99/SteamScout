@@ -1177,6 +1177,22 @@ a:hover {
     color: var(--warning);
 }
 
+.footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: var(--spacing-md);
+}
+
+.footer-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 4px;
+}
+
+
 /* ============================================
    DEAL FOOTER - Button Layout
    ============================================ */
