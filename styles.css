@@ -1486,7 +1486,7 @@ a:hover {
 
 /* Print styles */
 @media print {
-    .header, .footer, .nav-btn, .settings-btn {
+    .header, .nav-btn, .settings-btn {
         display: none;
     }
     
@@ -1497,5 +1497,17 @@ a:hover {
     
     .section {
         page-break-inside: avoid;
+    }
+}
+
+@media print {
+    .footer {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: fixed;
+        bottom: 10px;
+        width: 100%;
+        font-size: 12px;
     }
 }
