@@ -10,6 +10,7 @@ let deals = []; // Initialize deals array to prevent ReferenceError
 
 // Deals variables
 let currentDeals = [];
+let displayedDeals = []; // Track currently displayed deals (for pagination)
 let dealsLoading = false;
 
 // Cache for deals data
@@ -1379,80 +1380,6 @@ function getSteamUrl(deal) {
     return "https://store.steampowered.com";
 }
 
-// FIX 3: Handle expiration date properly
-function normalizeDate(dateInput) {
-    if (!dateInput) return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default 30 days
-    
-    // If it's already a Date object
-    if (dateInput instanceof Date) return dateInput;
-    
-    // If it's a Unix timestamp (seconds or milliseconds)
-    if (typeof dateInput === 'number') {
-        // Timestamps in seconds are typically less than 1e12 (year 33658)
-        // Timestamps in milliseconds are typically greater than 1e11 (1973 onwards for JS era)
-        if (dateInput < 1e11) {
-            // Likely in SECONDS - convert to milliseconds
-            return new Date(dateInput * 1000);
-        } else {
-            // Already in milliseconds
-            return new Date(dateInput);
-        }
-    }
-    
-    // If it's a string, try to parse it
-    if (typeof dateInput === 'string') {
-        const parsed = new Date(dateInput);
-        if (!isNaN(parsed)) return parsed;
-    }
-    
-    // Fallback: 30 days from now
-    return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-}
-
-function getExpiryText(expiry) {
-    if (!expiry || isNaN(expiry)) return "Limited time";
-
-    // Convert Unix seconds → milliseconds if needed
-    let timestamp = expiry;
-    if (typeof timestamp === 'number' && timestamp < 1e12) {
-        timestamp = timestamp * 1000;
-    }
-
-    const now = Date.now();
-    const diff = timestamp - now;
-    const date = new Date(timestamp);
-
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-        return "Limited time";
-    }
-
-    // If already expired
-    if (diff <= 0) return "Expired";
-
-    // Calculate days remaining
-    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-
-    // Format as "Ends Jan 28, 2026 (in 5 days)"
-    return `Ends ${date.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        year: "numeric"
-    })} (in ${days} day${days !== 1 ? "s" : ""})`;
-}
-
-function calculateDaysUntilExpiry(expiry) {
-    if (!expiry || isNaN(expiry)) return -1;
-    
-    let timestamp = expiry;
-    if (typeof timestamp === 'number' && timestamp < 1e12) {
-        timestamp = timestamp * 1000;
-    }
-    
-    const diff = timestamp - Date.now();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-}
-
 function displayGamePricesLookup(gameName, gameID, gameDetails, pricesData) {
     const resultsList = document.getElementById('dealsList');
     
@@ -2134,6 +2061,9 @@ function displayDeals(deals) {
         return;
     }
     
+    // Store currently displayed deals for pagination
+    displayedDeals = deals;
+    
     // Reset to page 1 when displaying new deals
     currentPage = 1;
     
@@ -2145,10 +2075,6 @@ function displayDeals(deals) {
     
     // Create deals HTML
     let dealsHTML = paginatedDeals.map(deal => {
-        const expiryText = getExpiryText(deal.expirationDate);
-        const daysUntilExpiry = calculateDaysUntilExpiry(deal.expirationDate);
-        const isExpiringSoon = daysUntilExpiry >= 0 && daysUntilExpiry <= 3;
-        
         return `
             <div class="deal-card">
                 <div class="deal-header">
@@ -2224,7 +2150,7 @@ function displayDeals(deals) {
 // Navigate to a specific page
 function goToPage(page) {
     currentPage = page;
-    displayDeals(currentDeals);
+    displayDeals(displayedDeals);
     // Scroll to deals section
     document.getElementById('dealsList').scrollIntoView({ behavior: 'smooth' });
 }
@@ -2251,16 +2177,6 @@ function sortDeals(sortBy) {
         case 'rating':
             // Sort by game rating (highest first)
             sortedDeals.sort((a, b) => b.rating - a.rating);
-            break;
-        case 'expiring':
-            // Sort by expiration date (expiring soon first)
-            sortedDeals.sort((a, b) => {
-                const dateA = normalizeDate(a.expirationDate);
-                const dateB = normalizeDate(b.expirationDate);
-                const daysA = Math.ceil((dateA - new Date()) / (1000 * 60 * 60 * 24));
-                const daysB = Math.ceil((dateB - new Date()) / (1000 * 60 * 60 * 24));
-                return daysA - daysB;
-            });
             break;
         default:
             return;
