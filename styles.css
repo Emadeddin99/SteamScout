@@ -449,6 +449,56 @@ a:hover {
 }
 
 /* Tax Display */
+.tax-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.tax-input {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-align: center;
+    background: var(--bg-primary);
+    color: var(--accent);
+    border: 2px solid var(--accent);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition);
+}
+
+.tax-input:hover {
+    border-color: var(--accent-light);
+    box-shadow: 0 0 8px rgba(0, 212, 255, 0.2);
+}
+
+.tax-input:focus {
+    outline: none;
+    border-color: var(--accent-light);
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.3);
+    background: rgba(0, 212, 255, 0.05);
+}
+
+/* Remove spinner for number input in Chrome, Edge, Safari */
+.tax-input::-webkit-outer-spin-button,
+.tax-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Remove spinner for Firefox */
+.tax-input[type=number] {
+    -moz-appearance: textfield;
+}
+
+.tax-symbol {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+
 .tax-value {
     font-size: 2.5rem;
     font-weight: 700;
@@ -822,17 +872,66 @@ a:hover {
 .breakdown-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
 }
 
 .breakdown-item {
+    padding: 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition);
+}
+
+.breakdown-item:hover {
+    border-color: var(--accent);
+    background: rgba(0, 212, 255, 0.03);
+}
+
+.breakdown-game-name {
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+}
+
+.breakdown-values-detailed {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.breakdown-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 12px;
-    background: var(--bg-primary);
-    border-radius: var(--radius-sm);
     font-size: 0.9rem;
+}
+
+.breakdown-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.breakdown-price {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.breakdown-tax {
+    color: var(--warning);
+    font-weight: 600;
+}
+
+.breakdown-total {
+    color: var(--success);
+    font-weight: 700;
+}
+
+.total-row {
+    padding-top: 6px;
+    border-top: 1px solid var(--border-color);
+    font-size: 1rem;
 }
 
 .breakdown-name {
@@ -1324,7 +1423,9 @@ a:hover {
     background: linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, rgba(0, 212, 255, 0.02) 100%);
     border: 2px solid var(--border-color);
     border-radius: var(--radius-lg);
-    margin-top: 32px;
+    margin: 32px auto 0;
+    width: 100%;
+    max-width: 600px;
     animation: fadeInUp 0.5s ease-out;
 }
 

@@ -51,7 +51,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function setupEventListeners() {
-    const taxRateInput = document.getElementById('taxRateSlider');
+    const taxRateSlider = document.getElementById('taxRateSlider');
+    const taxRateInput = document.getElementById('taxRateInput');
     const gameCountInput = document.getElementById('gameCount');
     const header = document.querySelector('.header');
     
@@ -64,8 +65,27 @@ function setupEventListeners() {
         }
     }, { passive: true });
     
-    taxRateInput.addEventListener('input', function() {
+    // Slider change handler
+    taxRateSlider.addEventListener('input', function() {
         // Remove active class from all preset buttons when slider is moved
+        document.querySelectorAll('.preset-btn').forEach(btn => 
+            btn.classList.remove('active'));
+        // Update input field to match slider
+        taxRateInput.value = this.value;
+        updateTaxDisplay();
+        triggerAutoCalculate();
+    });
+    
+    // Input field change handler
+    taxRateInput.addEventListener('input', function() {
+        let value = parseFloat(this.value) || 0;
+        // Enforce limits: minimum 0, maximum 20
+        if (value < 0) value = 0;
+        if (value > 20) value = 20;
+        this.value = value;
+        // Update slider to match input
+        taxRateSlider.value = value;
+        // Remove active class from all preset buttons when input is changed
         document.querySelectorAll('.preset-btn').forEach(btn => 
             btn.classList.remove('active'));
         updateTaxDisplay();
@@ -99,7 +119,8 @@ function setupEventListeners() {
     document.querySelectorAll('.preset-btn').forEach(button => {
         button.addEventListener('click', function() {
             const taxRate = parseFloat(this.dataset.tax);
-            document.getElementById('taxRateSlider').value = taxRate;
+            taxRateSlider.value = taxRate;
+            taxRateInput.value = taxRate;
             
             // Update active state
             document.querySelectorAll('.preset-btn').forEach(btn => 
@@ -114,7 +135,6 @@ function setupEventListeners() {
 
 function updateTaxDisplay() {
     const taxRate = document.getElementById('taxRateSlider').value;
-    document.getElementById('currentTax').textContent = `${taxRate}%`;
     document.getElementById('taxRateDisplay').textContent = `${taxRate}%`;
 }
 
@@ -384,11 +404,20 @@ function updatePerGameBreakdown() {
             
             html += `
                 <div class="breakdown-item">
-                    <span>Game ${parseInt(input.dataset.index) + 1}</span>
-                    <div class="breakdown-values">
-                        <span class="price">${formatPrice(price)}</span>
-                        <span class="tax">+${formatPrice(gameTax)} tax</span>
-                        <span class="total">= ${formatPrice(gameTotal)}</span>
+                    <div class="breakdown-game-name">Game ${parseInt(input.dataset.index) + 1}</div>
+                    <div class="breakdown-values-detailed">
+                        <div class="breakdown-row">
+                            <span class="breakdown-label">Price:</span>
+                            <span class="breakdown-price">${formatPrice(price)}</span>
+                        </div>
+                        <div class="breakdown-row">
+                            <span class="breakdown-label">Tax:</span>
+                            <span class="breakdown-tax">+${formatPrice(gameTax)}</span>
+                        </div>
+                        <div class="breakdown-row total-row">
+                            <span class="breakdown-label">Total:</span>
+                            <span class="breakdown-total">${formatPrice(gameTotal)}</span>
+                        </div>
                     </div>
                 </div>
             `;
