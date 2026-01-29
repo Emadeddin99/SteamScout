@@ -1013,12 +1013,7 @@ function displaySearchSuggestions(games, query) {
     const suggestionsDiv = document.getElementById('searchSuggestions');
     
     if (!games || games.length === 0) {
-        suggestionsDiv.innerHTML = `
-            <div class="search-suggestion-item" style="text-align: center; color: var(--text-tertiary);">
-                <i class="fas fa-search"></i>
-                <p>No games found for "${query}"</p>
-            </div>
-        `;
+        suggestionsDiv.innerHTML = '';
         return;
     }
     
@@ -1031,7 +1026,7 @@ function displaySearchSuggestions(games, query) {
         
         return `
             <div class="search-suggestion-item" onclick="lookupGamePrices('${gameName}', ${gameID})">
-                ${gameImage ? `<img src="${gameImage}" alt="${gameTitle}" class="search-suggestion-thumbnail">` : `<div class="search-suggestion-thumbnail" style="background: var(--bg-primary);"><i class="fas fa-image"></i></div>`}
+                ${gameImage ? `<img src="${gameImage}" alt="${gameTitle}" class="search-suggestion-thumbnail">` : `<div class="search-suggestion-thumbnail"><i class="fas fa-image"></i></div>`}
                 <div class="search-suggestion-info">
                     <div class="search-suggestion-name">${gameTitle}</div>
                     ${rating ? `<div class="search-suggestion-meta">${rating}</div>` : `<div class="search-suggestion-meta">Click to view prices</div>`}
@@ -1111,14 +1106,14 @@ async function lookupGamePrices(gameName, gameID) {
         console.error('Price lookup error:', error);
         resultsList.innerHTML = `
             <div class="empty-history">
-                <i class="fas fa-exclamation-triangle"></i>
-                <p>Couldn't fetch details for "${gameName}"</p>
-                <p class="subtext">You can add this game and enter the price manually</p>
+                <i class="fas fa-search"></i>
+                <p>Game Not Found</p>
+                <p class="subtext">The game "${gameName}" wasn't found on available stores</p>
                 <button class="deals-btn" onclick="addGameManual('${gameName}')" style="margin-top: 15px;">
                     <i class="fas fa-plus-circle"></i>
-                    Add "${gameName}" to Calculator
+                    Add to Calculator
                 </button>
-                <button class="deals-btn" onclick="clearGameSearch()" style="margin-top: 10px;">
+                <button class="deals-btn" onclick="clearGameSearch()" style="margin-top: 10px; background: linear-gradient(135deg, var(--text-tertiary), #64748b); color: white;">
                     <i class="fas fa-redo"></i>
                     Clear Search
                 </button>
@@ -1189,14 +1184,14 @@ async function fetchGamePrice(gameName) {
         console.error('Price fetch error:', error);
         dealsList.innerHTML = `
             <div class="empty-history">
-                <i class="fas fa-exclamation-triangle"></i>
-                <p>Prices not available for "${gameName}"</p>
-                <p class="subtext">You can add this game and enter the price manually</p>
+                <i class="fas fa-search"></i>
+                <p>Game Not Found</p>
+                <p class="subtext">The game "${gameName}" wasn't found on available stores</p>
                 <button class="deals-btn" onclick="addGameFromSearch('${gameName}', 0)" style="margin-top: 15px;">
                     <i class="fas fa-plus-circle"></i>
-                    Add "${gameName}" to Calculator
+                    Add to Calculator
                 </button>
-                <button class="deals-btn" onclick="clearGameSearch()" style="margin-top: 10px;">
+                <button class="deals-btn" onclick="clearGameSearch()" style="margin-top: 10px; background: linear-gradient(135deg, var(--text-tertiary), #64748b); color: white;">
                     <i class="fas fa-redo"></i>
                     Clear Search
                 </button>
