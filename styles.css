@@ -1616,13 +1616,20 @@ input:checked + .toggle-slider:before {
     overflow-y: auto;
     z-index: 1001;
     box-shadow: var(--shadow-md);
-    display: none;
     margin-top: -2px;
+    min-height: 0;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease-out;
+    pointer-events: none;
 }
 
-.search-suggestions:not(:empty) {
-    display: block;
-    animation: slideInDown 0.2s ease-out;
+.search-suggestions.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    pointer-events: auto;
 }
 
 .search-suggestion-item {
