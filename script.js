@@ -518,9 +518,6 @@ function loadHistory() {
                         <span class="history-detail-value" style="color: var(--accent-light); font-size: var(--font-size-lg);">$${item.total.toFixed(2)}</span>
                     </div>
                 </div>
-                <div class="history-games">
-                    <strong>Games:</strong> ${item.games ? item.games.join(', $') : 'N/A'}
-                </div>
                 <div class="history-actions">
                     <button class="history-action-btn delete" onclick="deleteHistoryItem('${item.id}')">
                         <i class="fas fa-trash"></i> Delete
