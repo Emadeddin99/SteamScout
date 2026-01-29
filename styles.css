@@ -152,6 +152,12 @@ a:hover {
     align-items: center;
 }
 
+@media (max-width: 640px) {
+    .main-content {
+        padding: 70px 16px 30px;
+    }
+}
+
 @media (min-width: 768px) {
     .main-content {
         padding: 100px 40px 40px;
@@ -274,17 +280,65 @@ a:hover {
 }
 
 @media (max-width: 640px) {
+    .header {
+        height: 60px;
+    }
+    
+    .header.shrink {
+        height: 50px;
+    }
+    
+    .header-content {
+        padding: 0 12px;
+        gap: 8px;
+    }
+    
+    .logo-section {
+        gap: 8px;
+        min-width: auto;
+    }
+    
+    .logo-icon {
+        font-size: 1.5rem;
+    }
+    
+    .logo-text h1 {
+        font-size: 1.1rem;
+        display: none;
+    }
+    
+    .tagline {
+        display: none;
+    }
+    
+    .header-nav {
+        gap: 6px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+    
     .nav-btn {
-        padding: 8px 12px;
-        font-size: 0.8rem;
+        padding: 8px 10px;
+        font-size: 0.7rem;
+        gap: 4px;
+        border: none;
+        background: transparent;
+        flex-shrink: 0;
+    }
+    
+    .nav-btn:hover {
+        background: rgba(0, 212, 255, 0.15);
+        color: var(--accent);
+        transform: none;
     }
     
     .nav-btn i {
         display: inline;
+        font-size: 1rem;
     }
     
     .nav-label {
-        display: inline;
+        display: none;
     }
 }
 
