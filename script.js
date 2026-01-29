@@ -2230,7 +2230,7 @@ function scrollToSection(sectionId) {
 // Toggle Settings Panel
 function toggleSettings() {
     const settingsPanel = document.getElementById('settingsPanel');
-    settingsPanel.classList.toggle('active');
+    settingsPanel.classList.toggle('open');
 }
 
 // Open Steam game by fetching URL
