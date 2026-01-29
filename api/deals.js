@@ -30,10 +30,10 @@ export default async function handler(req, res) {
         // Filter invalid deals
         deals = filterValidDeals(deals);
         
-        // Sort by discount descending, limit to 500 deals max (CheapShark API limit ~5 pages)
+        // Sort by discount descending, limit to 2000 deals max (CheapShark API can provide many more pages)
         deals = deals
             .sort((a, b) => b.discount - a.discount)
-            .slice(0, 500);
+            .slice(0, 2000);
 
         console.log(`[API] ✅ Returning ${deals.length} deals`);
 
@@ -185,7 +185,7 @@ function getSteamUrl(deal) {
 
 /**
  * Fetch deals from CheapShark API (fallback)
- * Fetches multiple pages to get up to 500 deals
+ * Fetches multiple pages to get up to 2000 deals
  * @returns {Promise<Array>} Normalized deal objects
  */
 async function fetchCheapSharkDeals() {
@@ -193,7 +193,7 @@ async function fetchCheapSharkDeals() {
         console.log('[API] Fetching from CheapShark (fallback)...');
 
         let allDeals = [];
-        const maxPages = 5; // Fetch up to 5 pages = 500 deals
+        const maxPages = 20; // Fetch up to 20 pages = 2000 deals
         const pageSize = 100; // CheapShark max per page
         
         // Fetch multiple pages
