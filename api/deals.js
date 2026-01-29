@@ -279,7 +279,11 @@ function normalizeCheapSharkDeal(deal) {
         const steamAppID = deal.steamAppID ? parseInt(deal.steamAppID) : null;
         const salePrice = parseFloat(deal.salePrice) || 0;
         const normalPrice = parseFloat(deal.normalPrice) || 0;
-        const discount = Math.round(parseFloat(deal.savings)) || 0;
+        // savings might be string with "%", so strip it
+        const savings = typeof deal.savings === 'string' 
+            ? parseFloat(deal.savings.replace('%', '')) 
+            : parseFloat(deal.savings);
+        const discount = Math.round(savings) || 0;
 
         // CheapShark doesn't provide expiry, so estimate based on discount % and freshness
         // Logic: Higher discounts are less common and may expire sooner
