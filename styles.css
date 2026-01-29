@@ -1164,6 +1164,49 @@ a:hover {
     font-weight: 600;
 }
 
+.history-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+}
+
+.history-action-btn {
+    flex: 1;
+    padding: 10px 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    color: var(--bg-primary);
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 0.85rem;
+}
+
+.history-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 212, 255, 0.2);
+}
+
+.history-action-btn.delete {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.8), var(--danger));
+    color: white;
+    border: 1px solid var(--danger);
+}
+
+.history-action-btn.delete:hover {
+    background: var(--danger);
+    box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
+}
+
+.history-action-btn i {
+    font-size: 0.9rem;
+}
+
 /* ============================================
    SETTINGS PANEL
    ============================================ */
@@ -1233,10 +1276,21 @@ a:hover {
     overflow-y: auto;
 }
 
+.settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
 .settings-group h3 {
+    margin: 0;
     margin-bottom: 12px;
     color: var(--accent);
     font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 8px;
 }
 
 .setting-btn {
@@ -1252,12 +1306,18 @@ a:hover {
     align-items: center;
     gap: 10px;
     transition: all var(--transition);
+    font-size: 0.9rem;
 }
 
 .setting-btn:hover {
     border-color: var(--accent);
     background: rgba(0, 212, 255, 0.05);
     transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.1);
+}
+
+.setting-btn i {
+    font-size: 1rem;
 }
 
 .setting-btn.danger {
@@ -1267,6 +1327,83 @@ a:hover {
 
 .setting-btn.danger:hover {
     background: rgba(239, 68, 68, 0.1);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-hover);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    transition: all var(--transition);
+}
+
+.theme-toggle:hover {
+    border-color: var(--accent);
+    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.1);
+}
+
+.theme-toggle label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.theme-toggle i {
+    font-size: 1rem;
+    color: var(--accent);
+}
+
+/* Toggle Switch */
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--border-color);
+    transition: all var(--transition);
+    border-radius: 28px;
+}
+
+.toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: all var(--transition);
+    border-radius: 50%;
+}
+
+input:checked + .toggle-slider {
+    background-color: var(--accent);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(22px);
 }
 
 /* ============================================
