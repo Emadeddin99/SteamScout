@@ -1965,6 +1965,7 @@ function displayDeals(deals) {
     
     // Reset pagination when displaying new deals
     currentPage = 1;
+    window.allDeals = deals; // Store deals globally for pagination
     const totalPages = Math.ceil(deals.length / dealsPerPage);
     const startIndex = (currentPage - 1) * dealsPerPage;
     const endIndex = startIndex + dealsPerPage;
@@ -2008,20 +2009,118 @@ function displayDeals(deals) {
         `;
     }).join('');
     
-    // Add pagination controls if there are more deals
+    // Add pagination controls with numbered pages
     if (totalPages > 1) {
+        let pageButtons = '';
+        const maxPagesToShow = 10; // Show up to 10 page buttons
+        const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+        const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+        
+        if (startPage > 1) {
+            pageButtons += `<button onclick="goToPage(1)" style="padding: 8px 12px; background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; transition: all var(--transition);" title="First page">1</button>`;
+            if (startPage > 2) pageButtons += `<span style="color: var(--text-tertiary); padding: 0 4px;">...</span>`;
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const isActive = i === currentPage;
+            pageButtons += `<button onclick="goToPage(${i})" style="padding: 8px 12px; background: ${isActive ? 'linear-gradient(135deg, var(--accent), var(--accent-light))' : 'var(--bg-tertiary)'}; color: ${isActive ? 'var(--bg-primary)' : 'var(--text-secondary)'}; border: 1px solid ${isActive ? 'var(--accent)' : 'var(--border-color)'}; border-radius: var(--radius-sm); cursor: pointer; font-weight: ${isActive ? '600' : '400'}; transition: all var(--transition);" ${isActive ? 'title="Current page"' : ''}>${i}</button>`;
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) pageButtons += `<span style="color: var(--text-tertiary); padding: 0 4px;">...</span>`;
+            pageButtons += `<button onclick="goToPage(${totalPages})" style="padding: 8px 12px; background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; transition: all var(--transition);" title="Last page">${totalPages}</button>`;
+        }
+        
         const paginationHTML = `
-            <div style="grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; gap: 16px; padding: 20px; text-align: center;">
-                <span style="color: var(--text-secondary);">Page ${currentPage} of ${totalPages}</span>
-                ${currentPage < totalPages ? `
-                    <button onclick="loadMoreDeals()" style="padding: 12px 24px; background: linear-gradient(135deg, var(--accent), var(--accent-light)); color: var(--bg-primary); border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; transition: all var(--transition);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 16px rgba(0, 212, 255, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                        <i class="fas fa-chevron-down"></i> Load More (${Math.min(dealsPerPage, deals.length - endIndex)} more)
-                    </button>
-                ` : '<span style="color: var(--text-tertiary);">No more deals to load</span>'}
+            <div style="grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 24px; text-align: center; flex-wrap: wrap;">
+                <span style="color: var(--text-secondary); margin-right: 16px;">Page ${currentPage} of ${totalPages}</span>
+                ${pageButtons}
             </div>
         `;
         dealsList.innerHTML += paginationHTML;
     }
+}
+
+// Navigate to a specific page
+function goToPage(pageNum) {
+    const totalPages = Math.ceil(window.allDeals.length / dealsPerPage);
+    if (pageNum < 1 || pageNum > totalPages) return;
+    
+    currentPage = pageNum;
+    const dealsList = document.getElementById('dealsList');
+    const startIndex = (currentPage - 1) * dealsPerPage;
+    const endIndex = startIndex + dealsPerPage;
+    const paginatedDeals = window.allDeals.slice(startIndex, endIndex);
+    
+    dealsList.innerHTML = paginatedDeals.map(deal => {
+        return `
+            <div class="deal-card">
+                <div class="deal-header">
+                    <h3 class="deal-title">${deal.title}</h3>
+                    <div class="deal-badges">
+                        <span class="badge">-${deal.discountPercent}%</span>
+                        ${deal.rating ? `<span class="badge">⭐ ${deal.rating}</span>` : ''}
+                    </div>
+                </div>
+                
+                <div class="deal-body">
+                    <div class="deal-prices">
+                        <div class="price-item">
+                            <div class="price-label">Current</div>
+                            <div class="price-value">$${deal.price.toFixed(2)}</div>
+                            ${deal.originalPrice > deal.price ? `<div class="original-price">Was $${deal.originalPrice.toFixed(2)}</div>` : ''}
+                        </div>
+                        <div class="price-item">
+                            <div class="price-label">Save</div>
+                            <div class="price-value" style="color: var(--success);">$${(deal.originalPrice - deal.price).toFixed(2)}</div>
+                            <div class="discount-label">${deal.discountPercent}% off</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="deal-footer">
+                    <button class="deal-link" onclick="quickAddToCalculator(${deal.price})" title="Add to calculator">
+                        <i class="fas fa-plus"></i> Add to Calculator
+                    </button>
+                    <a href="${deal.storeUrl}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
+                        <i class="fas fa-external-link-alt"></i> View Deal
+                    </a>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Re-add pagination controls
+    let pageButtons = '';
+    const maxPagesToShow = 10;
+    const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (startPage > 1) {
+        pageButtons += `<button onclick="goToPage(1)" style="padding: 8px 12px; background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; transition: all var(--transition);" title="First page">1</button>`;
+        if (startPage > 2) pageButtons += `<span style="color: var(--text-tertiary); padding: 0 4px;">...</span>`;
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === currentPage;
+        pageButtons += `<button onclick="goToPage(${i})" style="padding: 8px 12px; background: ${isActive ? 'linear-gradient(135deg, var(--accent), var(--accent-light))' : 'var(--bg-tertiary)'}; color: ${isActive ? 'var(--bg-primary)' : 'var(--text-secondary)'}; border: 1px solid ${isActive ? 'var(--accent)' : 'var(--border-color)'}; border-radius: var(--radius-sm); cursor: pointer; font-weight: ${isActive ? '600' : '400'}; transition: all var(--transition);" ${isActive ? 'title="Current page"' : ''}>${i}</button>`;
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) pageButtons += `<span style="color: var(--text-tertiary); padding: 0 4px;">...</span>`;
+        pageButtons += `<button onclick="goToPage(${totalPages})" style="padding: 8px 12px; background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; transition: all var(--transition);" title="Last page">${totalPages}</button>`;
+    }
+    
+    const paginationHTML = `
+        <div style="grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 24px; text-align: center; flex-wrap: wrap;">
+            <span style="color: var(--text-secondary); margin-right: 16px;">Page ${currentPage} of ${totalPages}</span>
+            ${pageButtons}
+        </div>
+    `;
+    dealsList.innerHTML += paginationHTML;
+    
+    // Scroll to top of deals section
+    document.getElementById('deals').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Sort deals based on selected option
@@ -2051,86 +2150,6 @@ function sortDeals(sortBy) {
     
     // Update display with sorted deals
     displayDeals(sortedDeals);
-}
-
-// Load more deals pagination
-function loadMoreDeals() {
-    const totalPages = Math.ceil(currentDeals.length / dealsPerPage);
-    if (currentPage < totalPages) {
-        currentPage++;
-        const dealsList = document.getElementById('dealsList');
-        const startIndex = (currentPage - 1) * dealsPerPage;
-        const endIndex = startIndex + dealsPerPage;
-        const paginatedDeals = currentDeals.slice(startIndex, endIndex);
-        
-        const newDealsHTML = paginatedDeals.map(deal => {
-            return `
-                <div class="deal-card">
-                    <div class="deal-header">
-                        <h3 class="deal-title">${deal.title}</h3>
-                        <div class="deal-badges">
-                            <span class="badge">-${deal.discountPercent}%</span>
-                            ${deal.rating ? `<span class="badge">⭐ ${deal.rating}</span>` : ''}
-                        </div>
-                    </div>
-                    
-                    <div class="deal-body">
-                        <div class="deal-prices">
-                            <div class="price-item">
-                                <div class="price-label">Current</div>
-                                <div class="price-value">$${deal.price.toFixed(2)}</div>
-                                ${deal.originalPrice > deal.price ? `<div class="original-price">Was $${deal.originalPrice.toFixed(2)}</div>` : ''}
-                            </div>
-                            <div class="price-item">
-                                <div class="price-label">Save</div>
-                                <div class="price-value" style="color: var(--success);">$${(deal.originalPrice - deal.price).toFixed(2)}</div>
-                                <div class="discount-label">${deal.discountPercent}% off</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="deal-footer">
-                        <button class="deal-link" onclick="quickAddToCalculator(${deal.price})" title="Add to calculator">
-                            <i class="fas fa-plus"></i> Add to Calculator
-                        </button>
-                        <a href="${deal.storeUrl}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
-                            <i class="fas fa-external-link-alt"></i> View Deal
-                        </a>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
-        // Remove pagination button and append new deals
-        const paginationDiv = dealsList.querySelector('div:last-child');
-        if (paginationDiv && paginationDiv.style.gridColumn) {
-            paginationDiv.remove();
-        }
-        
-        dealsList.innerHTML += newDealsHTML;
-        
-        // Re-add pagination controls if there are still more pages
-        if (currentPage < totalPages) {
-            const remaining = currentDeals.length - endIndex;
-            const paginationHTML = `
-                <div style="grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; gap: 16px; padding: 20px; text-align: center;">
-                    <span style="color: var(--text-secondary);">Page ${currentPage} of ${totalPages}</span>
-                    <button onclick="loadMoreDeals()" style="padding: 12px 24px; background: linear-gradient(135deg, var(--accent), var(--accent-light)); color: var(--bg-primary); border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; transition: all var(--transition);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 16px rgba(0, 212, 255, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                        <i class="fas fa-chevron-down"></i> Load More (${Math.min(dealsPerPage, remaining)} more)
-                    </button>
-                </div>
-            `;
-            dealsList.innerHTML += paginationHTML;
-        } else {
-            const paginationHTML = `
-                <div style="grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; padding: 20px; text-align: center;">
-                    <span style="color: var(--text-secondary);">Page ${currentPage} of ${totalPages}</span>
-                    <span style="margin-left: 16px; color: var(--text-tertiary);">All deals loaded</span>
-                </div>
-            `;
-            dealsList.innerHTML += paginationHTML;
-        }
-    }
 }
 
 
