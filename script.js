@@ -962,7 +962,6 @@ function handleGameSearch(query) {
     
     if (!query.trim()) {
         suggestionsDiv.innerHTML = '';
-        suggestionsDiv.classList.remove('show');
         return;
     }
     
@@ -1014,8 +1013,12 @@ function displaySearchSuggestions(games, query) {
     const suggestionsDiv = document.getElementById('searchSuggestions');
     
     if (!games || games.length === 0) {
-        suggestionsDiv.innerHTML = '';
-        suggestionsDiv.classList.remove('show');
+        suggestionsDiv.innerHTML = `
+            <div class="search-suggestion-item" style="text-align: center; color: var(--text-tertiary);">
+                <i class="fas fa-search"></i>
+                <p>No games found for "${query}"</p>
+            </div>
+        `;
         return;
     }
     
@@ -1028,7 +1031,7 @@ function displaySearchSuggestions(games, query) {
         
         return `
             <div class="search-suggestion-item" onclick="lookupGamePrices('${gameName}', ${gameID})">
-                ${gameImage ? `<img src="${gameImage}" alt="${gameTitle}" class="search-suggestion-thumbnail">` : `<div class="search-suggestion-thumbnail"><i class="fas fa-image"></i></div>`}
+                ${gameImage ? `<img src="${gameImage}" alt="${gameTitle}" class="search-suggestion-thumbnail">` : `<div class="search-suggestion-thumbnail" style="background: var(--bg-primary);"><i class="fas fa-image"></i></div>`}
                 <div class="search-suggestion-info">
                     <div class="search-suggestion-name">${gameTitle}</div>
                     ${rating ? `<div class="search-suggestion-meta">${rating}</div>` : `<div class="search-suggestion-meta">Click to view prices</div>`}
@@ -1036,7 +1039,6 @@ function displaySearchSuggestions(games, query) {
             </div>
         `;
     }).join('');
-    suggestionsDiv.classList.add('show');
 }
 
 // Lookup game prices (when clicking suggestion)

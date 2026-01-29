@@ -30,10 +30,10 @@ export default async function handler(req, res) {
         // Filter invalid deals
         deals = filterValidDeals(deals);
         
-        // Sort by discount descending, limit to 3000 deals max (CheapShark API 30 pages of 100)
+        // Sort by discount descending, limit to 100
         deals = deals
             .sort((a, b) => b.discount - a.discount)
-            .slice(0, 3000);
+            .slice(0, 100);
 
         console.log(`[API] ✅ Returning ${deals.length} deals`);
 
@@ -185,66 +185,36 @@ function getSteamUrl(deal) {
 
 /**
  * Fetch deals from CheapShark API (fallback)
- * Fetches multiple pages to get up to 2000 deals
  * @returns {Promise<Array>} Normalized deal objects
  */
 async function fetchCheapSharkDeals() {
     try {
         console.log('[API] Fetching from CheapShark (fallback)...');
 
-        let allDeals = [];
-        const maxPages = 30; // Fetch up to 30 pages = 3000 deals
-        const pageSize = 100; // CheapShark max per page
+        // Filter for Steam store specifically (storeID=1) and get a good page size
+        const url = 'https://www.cheapshark.com/api/1.0/deals?storeID=1&pageNumber=0&pageSize=100&sortBy=Deal Rating';
         
-        // Fetch multiple pages
-        for (let pageNumber = 0; pageNumber < maxPages; pageNumber++) {
-            try {
-                const url = `https://www.cheapshark.com/api/1.0/deals?storeID=1&pageNumber=${pageNumber}&pageSize=${pageSize}&sortBy=Deal Rating`;
-                
-                console.log(`[API]   Fetching page ${pageNumber}...`);
-                
-                const response = await fetch(url, {
-                    headers: {
-                        'User-Agent': 'SteamScout/1.0'
-                    }
-                });
-
-                if (!response.ok) {
-                    console.warn(`[API]   Page ${pageNumber}: HTTP ${response.status}, stopping pagination`);
-                    break;
-                }
-
-                const data = await response.json();
-
-                if (!Array.isArray(data) || data.length === 0) {
-                    console.log(`[API]   Page ${pageNumber}: No more deals, stopping pagination`);
-                    break;
-                }
-
-                // Debug: log first deal sample to see data structure
-                if (pageNumber === 0 && data.length > 0) {
-                    console.log(`[API] Sample deal (page 0):`, JSON.stringify(data[0]));
-                }
-
-                console.log(`[API]   Page ${pageNumber}: Got ${data.length} deals`);
-                allDeals = allDeals.concat(data);
-                
-                // If we got fewer deals than pageSize, this was the last page
-                if (data.length < pageSize) {
-                    console.log(`[API]   Page ${pageNumber}: Got ${data.length} < ${pageSize}, final page reached`);
-                    break;
-                }
-                
-            } catch (pageError) {
-                console.error(`[API] Error fetching page ${pageNumber}:`, pageError.message);
-                break;
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'SteamScout/1.0'
             }
+        });
+
+        if (!response.ok) {
+            throw new Error(`CheapShark returned ${response.status}`);
         }
 
-        console.log(`[API] CheapShark total raw deals: ${allDeals.length}`);
+        const data = await response.json();
+
+        if (!Array.isArray(data)) {
+            console.warn('[API] Invalid CheapShark response');
+            return [];
+        }
+
+        console.log(`[API] CheapShark returned ${data.length} deals`);
 
         try {
-            const normalized = allDeals
+            const normalized = data
                 .map((deal, idx) => {
                     try {
                         const result = normalizeCheapSharkDeal(deal);
@@ -284,11 +254,7 @@ function normalizeCheapSharkDeal(deal) {
         const steamAppID = deal.steamAppID ? parseInt(deal.steamAppID) : null;
         const salePrice = parseFloat(deal.salePrice) || 0;
         const normalPrice = parseFloat(deal.normalPrice) || 0;
-        // savings might be string with "%", so strip it
-        const savings = typeof deal.savings === 'string' 
-            ? parseFloat(deal.savings.replace('%', '')) 
-            : parseFloat(deal.savings);
-        const discount = Math.round(savings) || 0;
+        const discount = Math.round(parseFloat(deal.savings)) || 0;
 
         // CheapShark doesn't provide expiry, so estimate based on discount % and freshness
         // Logic: Higher discounts are less common and may expire sooner
