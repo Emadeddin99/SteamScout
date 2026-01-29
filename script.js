@@ -460,7 +460,7 @@ function saveToHistory() {
     
     // Store price inputs in cache with expiry (7 days)
     const cacheData = {
-        games: currentCalculation.games || [],
+        gamePrices: currentCalculation.gamePrices || [],
         gameCount: currentCalculation.count,
         taxRate: currentCalculation.taxRate,
         timestamp: Date.now(),
@@ -591,34 +591,34 @@ function restoreFromHistory(itemId) {
         document.getElementById('gameCount').value = cachedData.gameCount;
         updateGameFields();
         
-        // Restore prices from cache
-        const inputs = document.querySelectorAll('#gameInputs input');
-        if (cachedData.games && cachedData.games.length > 0) {
-            cachedData.games.forEach((price, index) => {
-                if (inputs[index]) {
-                    inputs[index].value = price || '';
+        // Restore prices from cache by targeting gamePrice0, gamePrice1, etc
+        if (cachedData.gamePrices && cachedData.gamePrices.length > 0) {
+            cachedData.gamePrices.forEach((game) => {
+                const input = document.getElementById(`gamePrice${game.index}`);
+                if (input) {
+                    input.value = game.price || '';
                 }
             });
         }
         
         // Restore tax rate
-        document.getElementById('taxRateSlider').value = cachedData.taxRate;
+        document.getElementById('taxRateSlider').value = cachedData.taxRate / 100;
         updateTaxDisplay();
     } else {
         // Fallback to history item data if cache is expired
         document.getElementById('gameCount').value = item.count;
         updateGameFields();
         
-        if (item.games) {
-            const inputs = document.querySelectorAll('#gameInputs input');
-            item.games.forEach((price, index) => {
-                if (inputs[index]) {
-                    inputs[index].value = price || '';
+        if (item.gamePrices && item.gamePrices.length > 0) {
+            item.gamePrices.forEach((game) => {
+                const input = document.getElementById(`gamePrice${game.index}`);
+                if (input) {
+                    input.value = game.price || '';
                 }
             });
         }
         
-        document.getElementById('taxRateSlider').value = item.taxRate;
+        document.getElementById('taxRateSlider').value = item.taxRate / 100;
         updateTaxDisplay();
         
         if (!cachedData) {
@@ -628,6 +628,12 @@ function restoreFromHistory(itemId) {
     
     // Scroll to calculator
     scrollToSection('calculator');
+    
+    // Recalculate
+    calculateTotal();
+    
+    showNotification('Calculation restored', 'success');
+}
     
     // Recalculate
     calculateTotal();
