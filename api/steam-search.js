@@ -1,33 +1,11 @@
 /**
  * Steam Search API Handler
- * Searches for games on Steam and fetches pricing via CORS proxy
- * Includes retry logic for reliability
+ * Searches for games on Steam directly from server (no CORS needed)
+ * Server-side requests work with Steam API unlike browser requests
  */
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // ms
-
-async function fetchWithRetry(url, retries = MAX_RETRIES) {
-    for (let i = 0; i < retries; i++) {
-        try {
-            const response = await fetch(url);
-            if (response.ok || response.status !== 403) {
-                return response;
-            }
-            console.log(`[API] Attempt ${i + 1}/${retries} returned ${response.status}, retrying...`);
-            if (i < retries - 1) {
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (i + 1)));
-            }
-        } catch (error) {
-            console.error(`[API] Attempt ${i + 1}/${retries} failed:`, error.message);
-            if (i < retries - 1) {
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (i + 1)));
-            }
-        }
-    }
-    // Return the last response even if it failed
-    return fetch(url);
-}
+const MAX_RETRIES = 2;
+const RETRY_DELAY = 500; // ms
 
 export default async function handler(req, res) {
     // Enable CORS
@@ -51,11 +29,16 @@ export default async function handler(req, res) {
 
         console.log(`[API] Searching Steam for: ${gameName}`);
 
-        // Search for the game on Steam
+        // Call Steam search directly from server (works without CORS proxy)
         const steamSearchUrl = `https://steamcommunity.com/actions/SearchApps/${encodeURIComponent(gameName)}`;
-        const corsProxyUrl = `https://corsproxy.io/?${encodeURIComponent(steamSearchUrl)}`;
-
-        const searchResponse = await fetchWithRetry(corsProxyUrl);
+        
+        console.log(`[API] Fetching from: ${steamSearchUrl}`);
+        
+        const searchResponse = await fetch(steamSearchUrl, {
+            headers: {
+                'User-Agent': 'SteamScout/1.0'
+            }
+        });
 
         if (!searchResponse.ok) {
             console.error(`[API] Steam search returned status ${searchResponse.status}`);
@@ -80,11 +63,14 @@ export default async function handler(req, res) {
         const appId = searchData[0].appid;
         console.log(`[API] Found Steam app ID ${appId} for ${gameName}`);
 
-        // Get app details via CORS proxy
+        // Get app details directly from Steam (server request, no CORS issues)
         const steamDetailsUrl = `https://store.steampowered.com/api/appdetails?appids=${appId}&cc=US`;
-        const corsDetailsUrl = `https://corsproxy.io/?${encodeURIComponent(steamDetailsUrl)}`;
 
-        const detailResponse = await fetchWithRetry(corsDetailsUrl);
+        const detailResponse = await fetch(steamDetailsUrl, {
+            headers: {
+                'User-Agent': 'SteamScout/1.0'
+            }
+        });
 
         if (!detailResponse.ok) {
             console.error(`[API] Steam details returned status ${detailResponse.status}`);

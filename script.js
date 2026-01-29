@@ -1068,8 +1068,8 @@ async function lookupGamePrices(gameName, gameID) {
         let pricesData = [];
         
         try {
-            // Call CheapShark search endpoint - no CORS proxy needed, uses real deals
-            const searchResponse = await fetch(`/api/cheapshark-search?gameName=${encodeURIComponent(gameName)}`);
+            // Call Steam search endpoint via backend (server can fetch Steam directly)
+            const searchResponse = await fetch(`/api/steam-search?gameName=${encodeURIComponent(gameName)}`);
             const searchData = await searchResponse.json();
             
             console.log(`[GAME LOOKUP] Status: ${searchResponse.status}`);
@@ -1078,7 +1078,7 @@ async function lookupGamePrices(gameName, gameID) {
             if (searchResponse.ok) {
                 if (searchData.prices && searchData.prices.length > 0) {
                     pricesData = searchData.prices;
-                    console.log(`[GAME LOOKUP] Found ${pricesData.length} prices for ${searchData.title}`);
+                    console.log(`[GAME LOOKUP] Found prices for ${searchData.title}`);
                 }
             } else {
                 console.warn(`[GAME LOOKUP] Backend error: ${searchData.error}`);
