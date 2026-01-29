@@ -1068,23 +1068,23 @@ async function lookupGamePrices(gameName, gameID) {
         let pricesData = [];
         
         try {
-            // Call Steam search endpoint to fetch current pricing from Steam
-            const steamResponse = await fetch(`/api/steam-search?gameName=${encodeURIComponent(gameName)}`);
-            const steamData = await steamResponse.json();
+            // Call CheapShark search endpoint - no CORS proxy needed, uses real deals
+            const searchResponse = await fetch(`/api/cheapshark-search?gameName=${encodeURIComponent(gameName)}`);
+            const searchData = await searchResponse.json();
             
-            console.log(`[STEAM LOOKUP] Status: ${steamResponse.status}`);
-            console.log(`[STEAM LOOKUP] Response:`, steamData);
+            console.log(`[GAME LOOKUP] Status: ${searchResponse.status}`);
+            console.log(`[GAME LOOKUP] Response:`, searchData);
             
-            if (steamResponse.ok) {
-                if (steamData.prices && steamData.prices.length > 0) {
-                    pricesData = steamData.prices;
-                    console.log(`[STEAM LOOKUP] Found prices for ${gameName}`);
+            if (searchResponse.ok) {
+                if (searchData.prices && searchData.prices.length > 0) {
+                    pricesData = searchData.prices;
+                    console.log(`[GAME LOOKUP] Found ${pricesData.length} prices for ${searchData.title}`);
                 }
             } else {
-                console.warn(`[STEAM LOOKUP] Backend error: ${steamData.error}`);
+                console.warn(`[GAME LOOKUP] Backend error: ${searchData.error}`);
             }
         } catch (e) {
-            console.warn('Could not fetch Steam prices:', e);
+            console.warn('Could not fetch game prices:', e);
         }
         
         console.log(`[LOOKUP] Found ${pricesData.length} prices for display`);
