@@ -51,6 +51,18 @@ function setupEventListeners() {
     const taxRateInput = document.getElementById('taxRateSlider');
     const gameCountInput = document.getElementById('gameCount');
     const header = document.querySelector('.header');
+    const suggestionsDiv = document.getElementById('searchSuggestions');
+    const searchInput = document.getElementById('gameSearchInput');
+    
+    // Close suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (suggestionsDiv && searchInput) {
+            if (!searchInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+                suggestionsDiv.innerHTML = '';
+                suggestionsDiv.style.display = 'none';
+            }
+        }
+    });
     
     // Header shrinking on scroll
     window.addEventListener('scroll', function() {
@@ -962,15 +974,28 @@ function handleGameSearch(query) {
     
     if (!query.trim()) {
         suggestionsDiv.innerHTML = '';
+        suggestionsDiv.style.display = 'none';
         return;
     }
+    
+    // Show loading state
+    suggestionsDiv.style.display = 'block';
+    suggestionsDiv.innerHTML = '<div class="search-suggestion-loading"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
     
     searchTimeout = setTimeout(async () => {
         try {
             const suggestions = await fetchGameSuggestions(query);
-            displaySearchSuggestions(suggestions, query);
+            
+            if (suggestions && suggestions.length > 0) {
+                displaySearchSuggestions(suggestions, query);
+            } else {
+                suggestionsDiv.innerHTML = '<div class="search-suggestion-empty"><i class="fas fa-search"></i> No games found</div>';
+                suggestionsDiv.style.display = 'block';
+            }
         } catch (error) {
             console.error('Search error:', error);
+            suggestionsDiv.innerHTML = '<div class="search-suggestion-error"><i class="fas fa-exclamation-triangle"></i> Search failed</div>';
+            suggestionsDiv.style.display = 'block';
         }
     }, 300);
 }
@@ -1014,37 +1039,56 @@ function displaySearchSuggestions(games, query) {
     
     if (!games || games.length === 0) {
         suggestionsDiv.innerHTML = '';
+        suggestionsDiv.style.display = 'none';
         return;
     }
     
-    suggestionsDiv.innerHTML = games.map((game, index) => {
+    // Clear existing suggestions
+    suggestionsDiv.innerHTML = '';
+    suggestionsDiv.style.display = 'block';
+    
+    games.forEach((game, index) => {
         const gameTitle = game.displayTitle || game.title || game.name;
         const gameID = game.id || index;
-        const gameName = gameTitle.replace(/'/g, "\\'");
         const gameImage = game.image || '';
         const rating = game.rating ? `★${game.rating.toFixed(1)}` : '';
         
-        return `
-            <div class="search-suggestion-item" onclick="lookupGamePrices('${gameName}', ${gameID})">
-                ${gameImage ? `<img src="${gameImage}" alt="${gameTitle}" class="search-suggestion-thumbnail">` : `<div class="search-suggestion-thumbnail"><i class="fas fa-image"></i></div>`}
-                <div class="search-suggestion-info">
-                    <div class="search-suggestion-name">${gameTitle}</div>
-                    ${rating ? `<div class="search-suggestion-meta">${rating}</div>` : `<div class="search-suggestion-meta">Click to view prices</div>`}
-                </div>
+        // Create suggestion item element
+        const suggestionItem = document.createElement('div');
+        suggestionItem.className = 'search-suggestion-item';
+        
+        // Add click handler directly to avoid quote escaping issues
+        suggestionItem.addEventListener('click', () => {
+            lookupGamePrices(gameTitle, gameID);
+        });
+        
+        // Build inner HTML
+        suggestionItem.innerHTML = `
+            ${gameImage ? `<img src="${gameImage}" alt="${gameTitle}" class="search-suggestion-thumbnail">` : `<div class="search-suggestion-thumbnail"><i class="fas fa-image"></i></div>`}
+            <div class="search-suggestion-info">
+                <div class="search-suggestion-name">${gameTitle}</div>
+                ${rating ? `<div class="search-suggestion-meta">${rating}</div>` : `<div class="search-suggestion-meta">Click to view prices</div>`}
             </div>
         `;
-    }).join('');
+        
+        suggestionsDiv.appendChild(suggestionItem);
+    });
 }
 
 // Lookup game prices (when clicking suggestion)
 async function lookupGamePrices(gameName, gameID) {
     const searchInput = document.getElementById('gameSearchInput');
+    const suggestionsDiv = document.getElementById('searchSuggestions');
+    
     if (searchInput) {
         searchInput.value = gameName;
     }
     
     // Hide suggestions
-    document.getElementById('searchSuggestions').innerHTML = '';
+    if (suggestionsDiv) {
+        suggestionsDiv.innerHTML = '';
+        suggestionsDiv.style.display = 'none';
+    }
     
     // Show loading - use searchResultsList if it exists
     const resultsList = document.getElementById('searchResultsList') || document.getElementById('dealsList');
@@ -1539,10 +1583,16 @@ function addGameWithPrice(gameName, price) {
 // Clear game search
 function clearGameSearch() {
     const searchInput = document.getElementById('gameSearchInput');
+    const suggestionsDiv = document.getElementById('searchSuggestions');
+    
     if (searchInput) {
         searchInput.value = '';
     }
-    document.getElementById('searchSuggestions').innerHTML = '';
+    
+    if (suggestionsDiv) {
+        suggestionsDiv.innerHTML = '';
+        suggestionsDiv.style.display = 'none';
+    }
     
     // Reload all deals
     if (currentDeals.length > 0) {
