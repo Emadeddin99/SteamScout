@@ -1312,6 +1312,94 @@ a:hover {
 }
 
 /* ============================================
+   PAGINATION
+   ============================================ */
+.pagination {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 24px;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, rgba(0, 212, 255, 0.02) 100%);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    margin-top: 32px;
+    animation: fadeInUp 0.5s ease-out;
+}
+
+.pagination-info {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.current-page {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.total-pages {
+    color: var(--accent-light);
+}
+
+.pagination-controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+.pagination-btn {
+    padding: 10px 14px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 40px;
+    justify-content: center;
+}
+
+.pagination-btn:hover {
+    border-color: var(--accent);
+    background: rgba(0, 212, 255, 0.1);
+    color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.2);
+}
+
+.pagination-btn.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    color: var(--bg-primary);
+    border-color: var(--accent);
+    box-shadow: 0 6px 16px rgba(0, 212, 255, 0.3);
+}
+
+@media (max-width: 640px) {
+    .pagination {
+        gap: 12px;
+        padding: 16px;
+    }
+    
+    .pagination-info {
+        font-size: 0.95rem;
+    }
+    
+    .pagination-btn {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+        min-width: 36px;
+    }
+}
+
+/* ============================================
    HISTORY SECTION
    ============================================ */
 .history-controls {

@@ -24,6 +24,10 @@ let gameSearchCache = [];
 let searchTimeout = null;
 let currentGameSuggestions = []; // Store current suggestions for Enter key display
 
+// Pagination
+let currentPage = 1;
+const dealsPerPage = 20;
+
 
 
 // Initialize the calculator
@@ -2101,7 +2105,17 @@ function displayDeals(deals) {
         return;
     }
     
-    dealsList.innerHTML = deals.map(deal => {
+    // Reset to page 1 when displaying new deals
+    currentPage = 1;
+    
+    // Calculate pagination
+    const totalPages = Math.ceil(deals.length / dealsPerPage);
+    const startIndex = (currentPage - 1) * dealsPerPage;
+    const endIndex = startIndex + dealsPerPage;
+    const paginatedDeals = deals.slice(startIndex, endIndex);
+    
+    // Create deals HTML
+    let dealsHTML = paginatedDeals.map(deal => {
         const expiryText = getExpiryText(deal.expirationDate);
         const daysUntilExpiry = calculateDaysUntilExpiry(deal.expirationDate);
         const isExpiringSoon = daysUntilExpiry >= 0 && daysUntilExpiry <= 3;
@@ -2142,6 +2156,48 @@ function displayDeals(deals) {
             </div>
         `;
     }).join('');
+    
+    // Create pagination controls
+    let paginationHTML = '';
+    if (totalPages > 1) {
+        paginationHTML = `
+            <div class="pagination">
+                <div class="pagination-info">
+                    Page <span class="current-page">${currentPage}</span> out of <span class="total-pages">${totalPages}</span>
+                </div>
+                <div class="pagination-controls">
+                    ${currentPage > 1 ? `<button class="pagination-btn" onclick="goToPage(${currentPage - 1})"><i class="fas fa-chevron-left"></i> Prev</button>` : ''}
+        `;
+        
+        // Show page numbers
+        const maxPagesToShow = 5;
+        const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+        const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+        
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === currentPage) {
+                paginationHTML += `<button class="pagination-btn active">${i}</button>`;
+            } else {
+                paginationHTML += `<button class="pagination-btn" onclick="goToPage(${i})">${i}</button>`;
+            }
+        }
+        
+        paginationHTML += `
+                    ${currentPage < totalPages ? `<button class="pagination-btn" onclick="goToPage(${currentPage + 1})">Next <i class="fas fa-chevron-right"></i></button>` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    dealsList.innerHTML = dealsHTML + paginationHTML;
+}
+
+// Navigate to a specific page
+function goToPage(page) {
+    currentPage = page;
+    displayDeals(currentDeals);
+    // Scroll to deals section
+    document.getElementById('dealsList').scrollIntoView({ behavior: 'smooth' });
 }
 
 // Sort deals based on selected option
