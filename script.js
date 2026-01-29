@@ -1436,7 +1436,8 @@ function displayGamePricesLookup(gameName, gameID, gameDetails, pricesData) {
                                     ${bestPrice.discount > 0 ? `<div class="discount-label">${bestPrice.discount}% off</div>` : ''}
                                 </div>
                                 <div class="price-item">
-                                    <div class="price-label">Save ${formatPrice(savings)} with Steam</div>
+                                    <div class="price-label">Save</div>
+                                    <div class="price-value" style="color: var(--success);">${formatPrice(savings)}</div>
                                 </div>
                             </div>
                         </div>

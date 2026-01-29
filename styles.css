@@ -851,38 +851,6 @@ a:hover {
     opacity: 0.8;
 }
 
-/* Deals Button Styling */
-.deals-btn {
-    background: linear-gradient(135deg, var(--accent), var(--accent-light));
-    color: var(--bg-primary);
-    border: none;
-    padding: 12px 20px;
-    border-radius: var(--radius-md);
-    font-weight: 600;
-    cursor: pointer;
-    transition: all var(--transition);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.95rem;
-    width: 100%;
-    justify-content: center;
-}
-
-.deals-btn:hover {
-    background: linear-gradient(135deg, var(--accent-light), var(--accent));
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(0, 212, 255, 0.3);
-}
-
-.deals-btn:active {
-    transform: translateY(0);
-}
-
-.deals-btn i {
-    font-size: 1.1rem;
-}
-
 /* ============================================
    DEALS SECTION
    ============================================ */
