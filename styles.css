@@ -794,6 +794,12 @@ a:hover {
     text-align: center;
     padding: 40px 20px;
     color: var(--text-tertiary);
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
 }
 
 .empty-state i {
