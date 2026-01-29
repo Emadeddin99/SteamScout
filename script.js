@@ -48,6 +48,16 @@ document.addEventListener('DOMContentLoaded', function() {
 function setupEventListeners() {
     const taxRateInput = document.getElementById('taxRateSlider');
     const gameCountInput = document.getElementById('gameCount');
+    const header = document.querySelector('.header');
+    
+    // Header shrinking on scroll
+    window.addEventListener('scroll', function() {
+        if (window.scrollY > 100) {
+            header.classList.add('shrink');
+        } else {
+            header.classList.remove('shrink');
+        }
+    }, { passive: true });
     
     taxRateInput.addEventListener('input', function() {
         // Remove active class from all preset buttons when slider is moved

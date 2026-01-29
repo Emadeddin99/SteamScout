@@ -146,7 +146,10 @@ a:hover {
     width: 100%;
     max-width: 1600px;
     margin: 0 auto;
-    padding: var(--spacing-md);
+    padding: calc(var(--spacing-2xl) + 60px) var(--spacing-md) var(--spacing-md) var(--spacing-md);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 /* ============================================
@@ -154,12 +157,25 @@ a:hover {
    ============================================ */
 .header {
     background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
-    border-bottom: 2px solid var(--accent);
+    border-bottom: 3px solid var(--accent);
     padding: var(--spacing-lg) var(--spacing-md);
-    position: sticky;
+    position: fixed;
     top: 0;
-    z-index: 100;
-    box-shadow: var(--shadow-md);
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    box-shadow: var(--shadow-lg);
+    transition: all var(--transition-base);
+    backdrop-filter: blur(10px);
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 58, 138, 0.95) 100%);
+}
+
+.header.shrink {
+    padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.header.shrink .logo-section {
+    display: none;
 }
 
 .header-content {
@@ -170,12 +186,16 @@ a:hover {
     justify-content: space-between;
     gap: var(--spacing-lg);
     flex-wrap: wrap;
+    width: 100%;
+    padding: 0 var(--spacing-md);
 }
 
 .logo-section {
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
+    transition: all var(--transition-base);
+    min-width: fit-content;
 }
 
 .logo-icon {
@@ -205,21 +225,26 @@ a:hover {
 .nav-btn {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: var(--spacing-xs);
     padding: var(--spacing-sm) var(--spacing-md);
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(245, 158, 11, 0.1);
     color: var(--text-primary);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(245, 158, 11, 0.3);
     border-radius: var(--radius-md);
     cursor: pointer;
     transition: all var(--transition-fast);
     font-size: var(--font-size-sm);
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 .nav-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
+    background: var(--accent);
     border-color: var(--accent);
-    color: var(--accent-light);
+    color: var(--bg-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
 }
 
 .nav-label {
@@ -1013,8 +1038,16 @@ a:hover {
 
 .deals-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: var(--spacing-lg);
+    width: 100%;
+    justify-items: center;
+}
+
+@media (max-width: 1024px) {
+    .deals-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
 }
 
 @media (max-width: 640px) {
@@ -1028,25 +1061,28 @@ a:hover {
    ============================================ */
 .deal-card {
     background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    border: 2px solid var(--border-color);
     border-radius: var(--radius-lg);
     overflow: hidden;
     transition: all var(--transition-base);
     display: flex;
     flex-direction: column;
     height: 100%;
+    width: 100%;
+    max-width: 350px;
 }
 
 .deal-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
+    transform: translateY(-8px);
+    box-shadow: 0 15px 40px rgba(245, 158, 11, 0.2);
     border-color: var(--accent);
 }
 
 .deal-header {
     padding: var(--spacing-md);
-    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    border-bottom: 2px solid var(--accent);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    border-bottom: 3px solid var(--accent);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .deal-title {
@@ -1096,34 +1132,49 @@ a:hover {
 }
 
 .deal-prices {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-md);
+    align-items: stretch;
+}
+
+@media (max-width: 640px) {
+    .deal-prices {
+        grid-template-columns: 1fr;
+    }
 }
 
 .price-item {
     display: flex;
+    flex-direction: column;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--bg-primary);
-    border-radius: var(--radius-sm);
-    border-left: 3px solid var(--border-color);
-    transition: all var(--transition-fast);
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-primary));
+    border-radius: var(--radius-md);
+    border: 2px solid var(--border-color);
+    transition: all var(--transition-base);
+    text-align: center;
+}
+
+.price-item:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
 }
 
 .price-item:first-child {
-    border-left-color: var(--text-tertiary);
+    border-color: var(--text-tertiary);
 }
 
 .price-item:nth-child(2) {
-    border-left-color: var(--accent);
-    background: rgba(245, 158, 11, 0.05);
+    border-color: var(--accent);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05));
 }
 
 .price-item:nth-child(3) {
-    border-left-color: var(--success);
-    background: rgba(16, 185, 129, 0.05);
+    border-color: var(--success);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));
 }
 
 .price-label {
@@ -1132,16 +1183,16 @@ a:hover {
     font-weight: 500;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: var(--spacing-xs);
-    flex: 1;
+    width: 100%;
 }
 
 .price-value {
-    font-size: var(--font-size-lg);
+    font-size: var(--font-size-xl);
     font-weight: 700;
     color: var(--accent-light);
-    text-align: right;
+    text-align: center;
 }
 
 .price-item:nth-child(3) .price-value {
@@ -1527,3 +1578,123 @@ a:hover {
         font-size: 12px;
     }
 }
+
+/* ============================================
+   ANIMATIONS & VISUAL EFFECTS
+   ============================================ */
+@keyframes pulse-glow {
+    0%, 100% {
+        text-shadow: 0 0 10px rgba(245, 158, 11, 0.5),
+                     0 0 20px rgba(245, 158, 11, 0.3);
+        transform: scale(1);
+    }
+    50% {
+        text-shadow: 0 0 20px rgba(245, 158, 11, 0.8),
+                     0 0 40px rgba(245, 158, 11, 0.5);
+        transform: scale(1.05);
+    }
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slide-in-top {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slide-in-bottom {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+/* Apply fade-in animations on load */
+.section {
+    animation: fade-in 0.6s ease-out;
+}
+
+.deal-card {
+    animation: fade-in 0.6s ease-out;
+}
+
+.game-input-card {
+    animation: fade-in 0.5s ease-out;
+}
+
+.history-card-item {
+    animation: fade-in 0.5s ease-out;
+}
+
+/* Enhanced shadow effects for depth */
+.deal-card {
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.deal-card:hover {
+    box-shadow: 0 15px 40px rgba(245, 158, 11, 0.2);
+}
+
+.config-card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.config-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Gradient text effect for titles */
+.section-header h2 {
+    background: linear-gradient(135deg, var(--accent-light), var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Smooth transitions for all interactive elements */
+button, input, select {
+    transition: all var(--transition-base);
+}
+
+/* Focus states for better accessibility */
+button:focus, input:focus, select:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Deal card stagger animation */
+.deals-grid > .deal-card:nth-child(1) { animation-delay: 0s; }
+.deals-grid > .deal-card:nth-child(2) { animation-delay: 0.1s; }
+.deals-grid > .deal-card:nth-child(3) { animation-delay: 0.2s; }
+.deals-grid > .deal-card:nth-child(4) { animation-delay: 0.3s; }
+.deals-grid > .deal-card:nth-child(5) { animation-delay: 0.4s; }
+.deals-grid > .deal-card:nth-child(6) { animation-delay: 0.5s; }
+.deals-grid > .deal-card:nth-child(n+7) { animation-delay: 0.6s; }
