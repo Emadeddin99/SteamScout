@@ -808,49 +808,6 @@ a:hover {
     opacity: 0.5;
 }
 
-.empty-state p {
-    margin: 8px 0;
-    font-size: 1rem;
-}
-
-.empty-state .subtext {
-    font-size: 0.9rem;
-    color: var(--text-tertiary);
-    opacity: 0.8;
-}
-
-/* Empty History State */
-.empty-history {
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--text-tertiary);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    min-height: 300px;
-    width: 100%;
-}
-
-.empty-history i {
-    font-size: 3rem;
-    margin-bottom: 16px;
-    opacity: 0.4;
-    color: var(--accent);
-}
-
-.empty-history p {
-    margin: 8px 0;
-    font-size: 1.1rem;
-    color: var(--text-secondary);
-}
-
-.empty-history .subtext {
-    font-size: 0.95rem;
-    color: var(--text-tertiary);
-    opacity: 0.8;
-}
-
 /* ============================================
    DEALS SECTION
    ============================================ */
@@ -962,7 +919,6 @@ a:hover {
     display: grid;
     grid-template-columns: 1fr;
     gap: 24px;
-    width: 100%;
 }
 
 @media (min-width: 768px) {
@@ -1233,7 +1189,6 @@ a:hover {
     display: grid;
     grid-template-columns: 1fr;
     gap: 24px;
-    width: 100%;
 }
 
 @media (min-width: 768px) {
