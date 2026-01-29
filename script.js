@@ -1064,27 +1064,32 @@ async function lookupGamePrices(gameName, gameID) {
         if (!gameDetailsResponse.ok) throw new Error('Failed to fetch game details');
         const gameDetails = await gameDetailsResponse.json();
         
-        // Try to fetch prices from Steam direct API
+        // Fetch prices from backend deals API (includes Steam from CheapShark)
         let pricesData = [];
         
-        // Priority 1: Steam API for Steam prices
         try {
-            const steamPrices = await fetchSteamPrices(gameName);
-            if (steamPrices && steamPrices.length > 0) {
-                pricesData.push(...steamPrices);
+            const dealsResponse = await fetch('/api/deals');
+            if (dealsResponse.ok) {
+                const dealsData = await dealsResponse.json();
+                // Find deals matching this game name
+                if (dealsData.deals && Array.isArray(dealsData.deals)) {
+                    const matchingDeals = dealsData.deals.filter(d => 
+                        d.title.toLowerCase().includes(gameName.toLowerCase())
+                    );
+                    // Convert to price format for display
+                    pricesData = matchingDeals.map(d => ({
+                        shop: { name: 'Steam' },
+                        price: d.salePrice,
+                        regular: d.normalPrice,
+                        url: d.url,
+                        discount: d.discount,
+                        active: 1,
+                        source: 'deals'
+                    }));
+                }
             }
         } catch (e) {
-            console.warn('Could not fetch Steam prices:', e);
-        }
-        
-        // Priority 2: GOG API
-        try {
-            const gogPrices = await fetchGogPrices(gameName);
-            if (gogPrices && gogPrices.length > 0) {
-                pricesData.push(...gogPrices);
-            }
-        } catch (e) {
-            console.warn('Could not fetch GOG prices:', e);
+            console.warn('Could not fetch deals:', e);
         }
         
         displayGamePricesLookup(gameName, gameID, gameDetails, pricesData);
@@ -1187,87 +1192,56 @@ async function fetchGamePrice(gameName) {
     }
 }
 
-// Fetch Steam prices from Steam Web API
+// DEPRECATED: Now using backend /api/deals endpoint which includes Steam prices from CheapShark
+// This function is kept commented out in case we need it in the future
+/*
 async function fetchSteamPrices(gameName) {
     try {
-        // Use CORS proxy to bypass browser CORS policy
-        const steamSearchUrl = `https://steamcommunity.com/actions/SearchApps/${encodeURIComponent(gameName)}`;
-        const corsProxyUrl = `https://corsproxy.io/?${encodeURIComponent(steamSearchUrl)}`;
+        // Use backend API instead of direct CORS proxy
+        const apiUrl = `/api/steam-search?gameName=${encodeURIComponent(gameName)}`;
         
-        const response = await fetch(corsProxyUrl);
-        const searchData = await response.json();
+        console.log(`[STEAM] Fetching via backend: ${apiUrl}`);
         
-        if (!searchData || searchData.length === 0) {
-            console.log(`No Steam results found for: ${gameName}`);
+        const response = await fetch(apiUrl);
+        const result = await response.json();
+        
+        if (!response.ok) {
+            console.warn(`[STEAM] Backend returned status ${response.status}`);
+            console.warn(`[STEAM] Backend error:`, result);
             return [];
         }
         
-        const appId = searchData[0].appid;
-        console.log(`Found Steam app ID ${appId} for ${gameName}`);
-        
-        // Get app details via CORS proxy
-        const steamDetailsUrl = `https://store.steampowered.com/api/appdetails?appids=${appId}&cc=US`;
-        const corsDetailsUrl = `https://corsproxy.io/?${encodeURIComponent(steamDetailsUrl)}`;
-        
-        const detailResponse = await fetch(corsDetailsUrl);
-        const detailData = await detailResponse.json();
-        
-        console.log(`[STEAM] Fetching: ${steamDetailsUrl}`);
-        console.log(`[STEAM] Response structure:`, Object.keys(detailData || {}));
-        
-        if (!detailData || !detailData[appId]?.success) {
-            console.log(`Could not fetch details for app ID ${appId}`);
-            console.log(`[STEAM] Response:`, detailData);
+        if (!result.prices || result.prices.length === 0) {
+            console.log(`No Steam prices found for: ${gameName}`);
             return [];
         }
         
-        const appData = detailData[appId].data;
-        console.log(`[STEAM] App data keys:`, Object.keys(appData || {}).slice(0, 20));
-        
-        // Extract pricing information
-        if (!appData.price_overview) {
-            console.log(`No pricing data available for ${gameName}`);
-            console.log(`[STEAM] Full app data:`, JSON.stringify(appData, null, 2).substring(0, 500));
-            // Return empty but with Steam URL for manual pricing
-            return [{
-                shop: { name: 'Steam' },
-                price: 0,
-                regular: 0,
-                url: getSteamUrl({ id: appId, title: gameName }),
-                discount: 0,
-                active: 1,
-                source: 'steam',
-                noPriceData: true
-            }];
-        }
-        
-        const pricing = appData.price_overview;
-        const finalPrice = pricing.final / 100;
-        const initialPrice = pricing.initial / 100;
-        const discount = pricing.discount || 0;
-        
-        console.log(`[STEAM] Price found: $${finalPrice} (original: $${initialPrice})`);
+        console.log(`[STEAM] Found prices for app ID ${result.appId}: $${result.prices[0].price}`);
         
         // Apply FIX 1: Check for real Steam discount
-        let discountPercent = discount;
-        if (!hasRealSteamDiscount({ steamPrice: { initial: initialPrice, final: finalPrice } })) {
-            discountPercent = 0;
-        }
+        const prices = result.prices.map(price => {
+            if (price.noPriceData) {
+                return price;
+            }
+            
+            let discountPercent = price.discount || 0;
+            if (!hasRealSteamDiscount({ steamPrice: { initial: price.regular, final: price.price } })) {
+                discountPercent = 0;
+            }
+            
+            return {
+                ...price,
+                discount: discountPercent
+            };
+        });
         
-        return [{
-            shop: { name: 'Steam' },
-            price: finalPrice,
-            regular: initialPrice,
-            url: getSteamUrl({ id: appId, title: gameName }),
-            discount: discountPercent,
-            active: 1,
-            source: 'steam'
-        }];
+        return prices;
     } catch (error) {
         console.warn('Steam API fetch error:', error);
         return [];
     }
 }
+*/
 
 // Fetch GOG prices - Not available without authentication
 async function fetchGogPrices(gameName) {
