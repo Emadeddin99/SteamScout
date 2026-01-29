@@ -936,30 +936,37 @@ a:hover {
 /* ============================================
    Game not found styling
    ============================================ */
-.empty-deals {
+.empty-history {
     text-align: center;
-    padding: 60px 20px;
+    padding: 60px 40px;
     color: var(--text-tertiary);
-    border: 2px dashed var(--border-color);
-    border-radius: var(--radius-md);
-    background: var(--bg-secondary);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 300px;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, rgba(0, 212, 255, 0.02) 100%);
+    border-radius: var(--radius-lg);
 }
 
-.empty-deals i {
-    font-size: 2.5rem;
-    margin-bottom: 16px;
-    opacity: 0.5;
+.empty-history i {
+    font-size: 3.5rem;
+    margin-bottom: 20px;
+    color: var(--accent);
+    opacity: 0.7;
 }
 
-.empty-deals p {
+.empty-history p {
+    margin: 0 0 16px 0;
     font-size: 1.1rem;
-    margin-bottom: 12px;
+    color: var(--text-primary);
+    font-weight: 600;
 }
 
-.empty-deals .subtext {
-    font-size: 0.9rem;
+.empty-history .subtext {
     color: var(--text-secondary);
-    margin-top: 8px;
+    font-size: 0.95rem;
+    margin-bottom: 24px;
 }
    
 /* ============================================
