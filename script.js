@@ -11,8 +11,6 @@ let deals = []; // Initialize deals array to prevent ReferenceError
 // Deals variables
 let currentDeals = [];
 let dealsLoading = false;
-let currentPage = 1;
-const dealsPerPage = 20;
 
 // Cache for deals data
 let dealsCache = {
@@ -1290,6 +1288,80 @@ function getSteamUrl(deal) {
     return "https://store.steampowered.com";
 }
 
+// FIX 3: Handle expiration date properly
+function normalizeDate(dateInput) {
+    if (!dateInput) return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default 30 days
+    
+    // If it's already a Date object
+    if (dateInput instanceof Date) return dateInput;
+    
+    // If it's a Unix timestamp (seconds or milliseconds)
+    if (typeof dateInput === 'number') {
+        // Timestamps in seconds are typically less than 1e12 (year 33658)
+        // Timestamps in milliseconds are typically greater than 1e11 (1973 onwards for JS era)
+        if (dateInput < 1e11) {
+            // Likely in SECONDS - convert to milliseconds
+            return new Date(dateInput * 1000);
+        } else {
+            // Already in milliseconds
+            return new Date(dateInput);
+        }
+    }
+    
+    // If it's a string, try to parse it
+    if (typeof dateInput === 'string') {
+        const parsed = new Date(dateInput);
+        if (!isNaN(parsed)) return parsed;
+    }
+    
+    // Fallback: 30 days from now
+    return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+}
+
+function getExpiryText(expiry) {
+    if (!expiry || isNaN(expiry)) return "Limited time";
+
+    // Convert Unix seconds → milliseconds if needed
+    let timestamp = expiry;
+    if (typeof timestamp === 'number' && timestamp < 1e12) {
+        timestamp = timestamp * 1000;
+    }
+
+    const now = Date.now();
+    const diff = timestamp - now;
+    const date = new Date(timestamp);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+        return "Limited time";
+    }
+
+    // If already expired
+    if (diff <= 0) return "Expired";
+
+    // Calculate days remaining
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
+    // Format as "Ends Jan 28, 2026 (in 5 days)"
+    return `Ends ${date.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+    })} (in ${days} day${days !== 1 ? "s" : ""})`;
+}
+
+function calculateDaysUntilExpiry(expiry) {
+    if (!expiry || isNaN(expiry)) return -1;
+    
+    let timestamp = expiry;
+    if (typeof timestamp === 'number' && timestamp < 1e12) {
+        timestamp = timestamp * 1000;
+    }
+    
+    const diff = timestamp - Date.now();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
 function displayGamePricesLookup(gameName, gameID, gameDetails, pricesData) {
     const resultsList = document.getElementById('dealsList');
     
@@ -1943,6 +2015,13 @@ function getStoreName(storeID) {
     return stores[storeKey] || 'Store';
 }
 
+// Calculate expiration date (simulated - typically 30 days from deal creation)
+function calculateExpirationDate(dealID) {
+    const now = new Date();
+    const expirationDate = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+    return expirationDate;
+}
+
 // Sample data as fallback
 async function loadSampleDeals() {
     return [];
@@ -1963,15 +2042,11 @@ function displayDeals(deals) {
         return;
     }
     
-    // Reset pagination when displaying new deals
-    currentPage = 1;
-    window.allDeals = deals; // Store deals globally for pagination
-    const totalPages = Math.ceil(deals.length / dealsPerPage);
-    const startIndex = (currentPage - 1) * dealsPerPage;
-    const endIndex = startIndex + dealsPerPage;
-    const paginatedDeals = deals.slice(startIndex, endIndex);
-    
-    dealsList.innerHTML = paginatedDeals.map(deal => {
+    dealsList.innerHTML = deals.map(deal => {
+        const expiryText = getExpiryText(deal.expirationDate);
+        const daysUntilExpiry = calculateDaysUntilExpiry(deal.expirationDate);
+        const isExpiringSoon = daysUntilExpiry >= 0 && daysUntilExpiry <= 3;
+        
         return `
             <div class="deal-card">
                 <div class="deal-header">
@@ -2008,119 +2083,6 @@ function displayDeals(deals) {
             </div>
         `;
     }).join('');
-    
-    // Add pagination controls with numbered pages
-    if (totalPages > 1) {
-        let pageButtons = '';
-        const maxPagesToShow = 10; // Show up to 10 page buttons
-        const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-        const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-        
-        if (startPage > 1) {
-            pageButtons += `<button onclick="goToPage(1)" style="padding: 8px 12px; background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; transition: all var(--transition);" title="First page">1</button>`;
-            if (startPage > 2) pageButtons += `<span style="color: var(--text-tertiary); padding: 0 4px;">...</span>`;
-        }
-        
-        for (let i = startPage; i <= endPage; i++) {
-            const isActive = i === currentPage;
-            pageButtons += `<button onclick="goToPage(${i})" style="padding: 8px 12px; background: ${isActive ? 'linear-gradient(135deg, var(--accent), var(--accent-light))' : 'var(--bg-tertiary)'}; color: ${isActive ? 'var(--bg-primary)' : 'var(--text-secondary)'}; border: 1px solid ${isActive ? 'var(--accent)' : 'var(--border-color)'}; border-radius: var(--radius-sm); cursor: pointer; font-weight: ${isActive ? '600' : '400'}; transition: all var(--transition);" ${isActive ? 'title="Current page"' : ''}>${i}</button>`;
-        }
-        
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) pageButtons += `<span style="color: var(--text-tertiary); padding: 0 4px;">...</span>`;
-            pageButtons += `<button onclick="goToPage(${totalPages})" style="padding: 8px 12px; background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; transition: all var(--transition);" title="Last page">${totalPages}</button>`;
-        }
-        
-        const paginationHTML = `
-            <div style="grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 24px; text-align: center; flex-wrap: wrap;">
-                <span style="color: var(--text-secondary); margin-right: 16px;">Page ${currentPage} of ${totalPages}</span>
-                ${pageButtons}
-            </div>
-        `;
-        dealsList.innerHTML += paginationHTML;
-    }
-}
-
-// Navigate to a specific page
-function goToPage(pageNum) {
-    const totalPages = Math.ceil(window.allDeals.length / dealsPerPage);
-    if (pageNum < 1 || pageNum > totalPages) return;
-    
-    currentPage = pageNum;
-    const dealsList = document.getElementById('dealsList');
-    const startIndex = (currentPage - 1) * dealsPerPage;
-    const endIndex = startIndex + dealsPerPage;
-    const paginatedDeals = window.allDeals.slice(startIndex, endIndex);
-    
-    dealsList.innerHTML = paginatedDeals.map(deal => {
-        return `
-            <div class="deal-card">
-                <div class="deal-header">
-                    <h3 class="deal-title">${deal.title}</h3>
-                    <div class="deal-badges">
-                        <span class="badge">-${deal.discountPercent}%</span>
-                        ${deal.rating ? `<span class="badge">⭐ ${deal.rating}</span>` : ''}
-                    </div>
-                </div>
-                
-                <div class="deal-body">
-                    <div class="deal-prices">
-                        <div class="price-item">
-                            <div class="price-label">Current</div>
-                            <div class="price-value">$${deal.price.toFixed(2)}</div>
-                            ${deal.originalPrice > deal.price ? `<div class="original-price">Was $${deal.originalPrice.toFixed(2)}</div>` : ''}
-                        </div>
-                        <div class="price-item">
-                            <div class="price-label">Save</div>
-                            <div class="price-value" style="color: var(--success);">$${(deal.originalPrice - deal.price).toFixed(2)}</div>
-                            <div class="discount-label">${deal.discountPercent}% off</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="deal-footer">
-                    <button class="deal-link" onclick="quickAddToCalculator(${deal.price})" title="Add to calculator">
-                        <i class="fas fa-plus"></i> Add to Calculator
-                    </button>
-                    <a href="${deal.storeUrl}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
-                        <i class="fas fa-external-link-alt"></i> View Deal
-                    </a>
-                </div>
-            </div>
-        `;
-    }).join('');
-    
-    // Re-add pagination controls
-    let pageButtons = '';
-    const maxPagesToShow = 10;
-    const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-    const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-    
-    if (startPage > 1) {
-        pageButtons += `<button onclick="goToPage(1)" style="padding: 8px 12px; background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; transition: all var(--transition);" title="First page">1</button>`;
-        if (startPage > 2) pageButtons += `<span style="color: var(--text-tertiary); padding: 0 4px;">...</span>`;
-    }
-    
-    for (let i = startPage; i <= endPage; i++) {
-        const isActive = i === currentPage;
-        pageButtons += `<button onclick="goToPage(${i})" style="padding: 8px 12px; background: ${isActive ? 'linear-gradient(135deg, var(--accent), var(--accent-light))' : 'var(--bg-tertiary)'}; color: ${isActive ? 'var(--bg-primary)' : 'var(--text-secondary)'}; border: 1px solid ${isActive ? 'var(--accent)' : 'var(--border-color)'}; border-radius: var(--radius-sm); cursor: pointer; font-weight: ${isActive ? '600' : '400'}; transition: all var(--transition);" ${isActive ? 'title="Current page"' : ''}>${i}</button>`;
-    }
-    
-    if (endPage < totalPages) {
-        if (endPage < totalPages - 1) pageButtons += `<span style="color: var(--text-tertiary); padding: 0 4px;">...</span>`;
-        pageButtons += `<button onclick="goToPage(${totalPages})" style="padding: 8px 12px; background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; transition: all var(--transition);" title="Last page">${totalPages}</button>`;
-    }
-    
-    const paginationHTML = `
-        <div style="grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 24px; text-align: center; flex-wrap: wrap;">
-            <span style="color: var(--text-secondary); margin-right: 16px;">Page ${currentPage} of ${totalPages}</span>
-            ${pageButtons}
-        </div>
-    `;
-    dealsList.innerHTML += paginationHTML;
-    
-    // Scroll to top of deals section
-    document.getElementById('deals').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Sort deals based on selected option
@@ -2146,12 +2108,23 @@ function sortDeals(sortBy) {
             // Sort by game rating (highest first)
             sortedDeals.sort((a, b) => b.rating - a.rating);
             break;
+        case 'expiring':
+            // Sort by expiration date (expiring soon first)
+            sortedDeals.sort((a, b) => {
+                const dateA = normalizeDate(a.expirationDate);
+                const dateB = normalizeDate(b.expirationDate);
+                const daysA = Math.ceil((dateA - new Date()) / (1000 * 60 * 60 * 24));
+                const daysB = Math.ceil((dateB - new Date()) / (1000 * 60 * 60 * 24));
+                return daysA - daysB;
+            });
+            break;
+        default:
+            return;
     }
     
     // Update display with sorted deals
     displayDeals(sortedDeals);
 }
-
 
 // Filter giveaways by platform - show only $0 games for Steam, all deals for All
 function filterDeals(platform) {
@@ -2299,53 +2272,4 @@ function dedupeDeals(deals) {
   }
 
   return Array.from(map.values());
-}
-
-// Deal Modal Functions
-function openDealModal(deal) {
-    const modal = document.getElementById('dealModal');
-    const body = document.getElementById('dealModalBody');
-    
-    body.innerHTML = `
-        <div class="deal-card">
-            <div class="deal-header">
-                <h3 class="deal-title">${deal.title}</h3>
-                <div class="deal-badges">
-                    <span class="badge">-${deal.discountPercent}%</span>
-                    ${deal.rating ? `<span class="badge">⭐ ${deal.rating}</span>` : ''}
-                </div>
-            </div>
-            
-            <div class="deal-body">
-                <div class="deal-prices">
-                    <div class="price-item">
-                        <div class="price-label">Current</div>
-                        <div class="price-value">$${deal.price.toFixed(2)}</div>
-                        ${deal.originalPrice > deal.price ? `<div class="original-price">Was $${deal.originalPrice.toFixed(2)}</div>` : ''}
-                    </div>
-                    <div class="price-item">
-                        <div class="price-label">Save</div>
-                        <div class="price-value" style="color: var(--success);">$${(deal.originalPrice - deal.price).toFixed(2)}</div>
-                        <div class="discount-label">${deal.discountPercent}% off</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="deal-footer">
-                <button class="deal-link" onclick="quickAddToCalculator(${deal.price})" title="Add to calculator">
-                    <i class="fas fa-plus"></i> Add to Calculator
-                </button>
-                <a href="${deal.storeUrl}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
-                    <i class="fas fa-external-link-alt"></i> View Deal
-                </a>
-            </div>
-        </div>
-    `;
-    
-    modal.classList.add('active');
-}
-
-function closeDealModal() {
-    const modal = document.getElementById('dealModal');
-    modal.classList.remove('active');
 }
