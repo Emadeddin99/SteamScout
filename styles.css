@@ -989,10 +989,22 @@ a:hover {
     color: var(--text-tertiary);
     cursor: pointer;
     transition: all var(--transition);
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .search-clear:hover {
     color: var(--accent);
+    background: rgba(0, 212, 255, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.15);
+    transform: scale(1.1);
+}
+
+.search-clear:active {
+    transform: scale(0.95);
 }
 
 .deals-filter {

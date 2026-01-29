@@ -947,7 +947,14 @@ function initializeDealsFilters() {
         gameSearchInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                searchGamesByName(this.value);
+                // Get first suggestion and trigger it
+                const firstSuggestion = document.querySelector('.search-suggestion-item');
+                if (firstSuggestion) {
+                    firstSuggestion.click();
+                } else {
+                    // Fallback if no suggestions
+                    searchGamesByName(this.value);
+                }
             }
         });
     }
