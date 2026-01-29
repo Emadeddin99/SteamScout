@@ -794,12 +794,6 @@ a:hover {
     text-align: center;
     padding: 40px 20px;
     color: var(--text-tertiary);
-    grid-column: 1 / -1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    min-height: 200px;
 }
 
 .empty-state i {
@@ -1103,88 +1097,6 @@ a:hover {
 /* ============================================
    HISTORY SECTION
    ============================================ */
-.history-controls {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 20px;
-    background: linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, rgba(0, 212, 255, 0.02) 100%);
-    border: 2px solid var(--border-color);
-    border-radius: var(--radius-md);
-    margin-bottom: 24px;
-    transition: all var(--transition);
-}
-
-.history-controls:hover {
-    border-color: var(--accent);
-    background: linear-gradient(135deg, rgba(0, 212, 255, 0.1) 0%, rgba(0, 212, 255, 0.05) 100%);
-    box-shadow: 0 6px 16px rgba(0, 212, 255, 0.12);
-}
-
-.history-count {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.history-count i {
-    font-size: 1.2rem;
-    color: var(--accent);
-}
-
-.history-count span {
-    color: var(--accent-light);
-    font-weight: 700;
-    font-size: 1rem;
-}
-
-.clear-history-btn {
-    padding: 10px 16px;
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
-    color: var(--danger);
-    border: 2px solid var(--danger);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: all var(--transition);
-    font-size: 0.9rem;
-}
-
-.clear-history-btn:hover {
-    background: linear-gradient(135deg, var(--danger), #dc2626);
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 14px rgba(239, 68, 68, 0.25);
-}
-
-.clear-history-btn i {
-    font-size: 1rem;
-}
-
-@media (max-width: 640px) {
-    .history-controls {
-        padding: 12px 16px;
-        flex-wrap: wrap;
-        gap: 12px;
-    }
-    
-    .history-count {
-        font-size: 0.85rem;
-    }
-    
-    .clear-history-btn {
-        padding: 8px 12px;
-        font-size: 0.8rem;
-    }
-}
-
 .history-grid {
     display: grid;
     grid-template-columns: 1fr;
@@ -1250,51 +1162,6 @@ a:hover {
 .history-detail-value {
     color: var(--accent-light);
     font-weight: 600;
-}
-
-.history-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: auto;
-}
-
-.history-action-btn {
-    flex: 1;
-    padding: 10px 12px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-light));
-    color: var(--bg-primary);
-    border: none;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    font-weight: 600;
-    transition: all var(--transition);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    font-size: 0.85rem;
-}
-
-.history-action-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(0, 212, 255, 0.2);
-}
-
-.history-action-btn.delete {
-    background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
-    color: white;
-    border: 2px solid #dc2626;
-    font-weight: 700;
-}
-
-.history-action-btn.delete:hover {
-    background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
-    box-shadow: 0 8px 16px rgba(239, 68, 68, 0.4);
-    transform: translateY(-2px);
-}
-
-.history-action-btn i {
-    font-size: 0.9rem;
 }
 
 /* ============================================
@@ -1366,21 +1233,10 @@ a:hover {
     overflow-y: auto;
 }
 
-.settings-group {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-}
-
 .settings-group h3 {
-    margin: 0;
     margin-bottom: 12px;
     color: var(--accent);
     font-size: 1rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 2px solid var(--border-color);
-    padding-bottom: 8px;
 }
 
 .setting-btn {
@@ -1396,18 +1252,12 @@ a:hover {
     align-items: center;
     gap: 10px;
     transition: all var(--transition);
-    font-size: 0.9rem;
 }
 
 .setting-btn:hover {
     border-color: var(--accent);
     background: rgba(0, 212, 255, 0.05);
     transform: translateX(4px);
-    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.1);
-}
-
-.setting-btn i {
-    font-size: 1rem;
 }
 
 .setting-btn.danger {
@@ -1417,150 +1267,6 @@ a:hover {
 
 .setting-btn.danger:hover {
     background: rgba(239, 68, 68, 0.1);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
-}
-
-.theme-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background: var(--bg-hover);
-    border: 2px solid var(--border-color);
-    border-radius: var(--radius-md);
-    transition: all var(--transition);
-}
-
-.theme-toggle:hover {
-    border-color: var(--accent);
-    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.1);
-}
-
-.theme-toggle label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    font-weight: 600;
-    color: var(--text-primary);
-}
-
-.theme-toggle i {
-    font-size: 1rem;
-    color: var(--accent);
-}
-
-/* Toggle Switch */
-.toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 28px;
-}
-
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: var(--border-color);
-    transition: all var(--transition);
-    border-radius: 28px;
-}
-
-.toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 22px;
-    width: 22px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: all var(--transition);
-    border-radius: 50%;
-}
-
-input:checked + .toggle-slider {
-    background-color: var(--accent);
-}
-
-input:checked + .toggle-slider:before {
-    transform: translateX(22px);
-}
-
-/* ============================================
-   FOOTER STYLING
-   ============================================ */
-.footer {
-    width: 100%;
-    padding: 24px 20px;
-    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-tertiary) 100%);
-    border-top: 2px solid var(--accent);
-    margin-top: 60px;
-}
-
-.footer-content {
-    max-width: 1400px;
-    margin: 0 auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    text-align: center;
-}
-
-.footer-info {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-}
-
-.footer-info i {
-    color: var(--accent);
-}
-
-.footer-links {
-    color: var(--text-tertiary);
-    font-size: 0.85rem;
-}
-
-.footer-links p {
-    margin: 0;
-}
-
-.footer-links a {
-    color: var(--accent);
-    transition: all var(--transition);
-}
-
-.footer-links a:hover {
-    color: var(--accent-light);
-}
-
-@media (max-width: 640px) {
-    .footer {
-        padding: 16px 12px;
-    }
-    
-    .footer-content {
-        gap: 12px;
-    }
-    
-    .footer-info, .footer-links {
-        font-size: 0.8rem;
-    }
 }
 
 /* ============================================
@@ -1629,93 +1335,6 @@ input:checked + .toggle-slider:before {
 
 .search-suggestion-item:hover {
     background: var(--bg-hover);
-}
-
-/* ============================================
-   DEAL MODAL
-   ============================================ */
-.deal-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 2000;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
-
-.deal-modal.active {
-    display: flex;
-}
-
-.deal-modal-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(5px);
-    cursor: pointer;
-}
-
-.deal-modal-content {
-    position: relative;
-    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-tertiary) 100%);
-    border: 2px solid var(--accent);
-    border-radius: var(--radius-lg);
-    padding: 32px;
-    max-width: 600px;
-    width: 100%;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0, 212, 255, 0.3);
-    animation: modalSlideIn 0.3s ease-out;
-}
-
-.deal-modal-close {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-light));
-    color: var(--bg-primary);
-    border: none;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    font-size: 1.2rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all var(--transition);
-    z-index: 10;
-}
-
-.deal-modal-close:hover {
-    transform: rotate(90deg) scale(1.1);
-    box-shadow: 0 8px 16px rgba(0, 212, 255, 0.3);
-}
-
-@keyframes modalSlideIn {
-    from {
-        opacity: 0;
-        transform: scale(0.9) translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1) translateY(0);
-    }
-}
-
-@media (max-width: 640px) {
-    .deal-modal-content {
-        padding: 24px;
-        max-height: 90vh;
-    }
 }
 
 .search-suggestion-thumbnail {

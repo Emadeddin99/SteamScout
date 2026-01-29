@@ -11,8 +11,6 @@ let deals = []; // Initialize deals array to prevent ReferenceError
 // Deals variables
 let currentDeals = [];
 let dealsLoading = false;
-let currentPage = 1;
-const dealsPerPage = 20;
 
 // Cache for deals data
 let dealsCache = {
@@ -1290,6 +1288,80 @@ function getSteamUrl(deal) {
     return "https://store.steampowered.com";
 }
 
+// FIX 3: Handle expiration date properly
+function normalizeDate(dateInput) {
+    if (!dateInput) return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default 30 days
+    
+    // If it's already a Date object
+    if (dateInput instanceof Date) return dateInput;
+    
+    // If it's a Unix timestamp (seconds or milliseconds)
+    if (typeof dateInput === 'number') {
+        // Timestamps in seconds are typically less than 1e12 (year 33658)
+        // Timestamps in milliseconds are typically greater than 1e11 (1973 onwards for JS era)
+        if (dateInput < 1e11) {
+            // Likely in SECONDS - convert to milliseconds
+            return new Date(dateInput * 1000);
+        } else {
+            // Already in milliseconds
+            return new Date(dateInput);
+        }
+    }
+    
+    // If it's a string, try to parse it
+    if (typeof dateInput === 'string') {
+        const parsed = new Date(dateInput);
+        if (!isNaN(parsed)) return parsed;
+    }
+    
+    // Fallback: 30 days from now
+    return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+}
+
+function getExpiryText(expiry) {
+    if (!expiry || isNaN(expiry)) return "Limited time";
+
+    // Convert Unix seconds → milliseconds if needed
+    let timestamp = expiry;
+    if (typeof timestamp === 'number' && timestamp < 1e12) {
+        timestamp = timestamp * 1000;
+    }
+
+    const now = Date.now();
+    const diff = timestamp - now;
+    const date = new Date(timestamp);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+        return "Limited time";
+    }
+
+    // If already expired
+    if (diff <= 0) return "Expired";
+
+    // Calculate days remaining
+    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
+    // Format as "Ends Jan 28, 2026 (in 5 days)"
+    return `Ends ${date.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+    })} (in ${days} day${days !== 1 ? "s" : ""})`;
+}
+
+function calculateDaysUntilExpiry(expiry) {
+    if (!expiry || isNaN(expiry)) return -1;
+    
+    let timestamp = expiry;
+    if (typeof timestamp === 'number' && timestamp < 1e12) {
+        timestamp = timestamp * 1000;
+    }
+    
+    const diff = timestamp - Date.now();
+    return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
 function displayGamePricesLookup(gameName, gameID, gameDetails, pricesData) {
     const resultsList = document.getElementById('dealsList');
     
@@ -1943,6 +2015,13 @@ function getStoreName(storeID) {
     return stores[storeKey] || 'Store';
 }
 
+// Calculate expiration date (simulated - typically 30 days from deal creation)
+function calculateExpirationDate(dealID) {
+    const now = new Date();
+    const expirationDate = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+    return expirationDate;
+}
+
 // Sample data as fallback
 async function loadSampleDeals() {
     return [];
@@ -1963,14 +2042,11 @@ function displayDeals(deals) {
         return;
     }
     
-    // Reset pagination when displaying new deals
-    currentPage = 1;
-    const totalPages = Math.ceil(deals.length / dealsPerPage);
-    const startIndex = (currentPage - 1) * dealsPerPage;
-    const endIndex = startIndex + dealsPerPage;
-    const paginatedDeals = deals.slice(startIndex, endIndex);
-    
-    dealsList.innerHTML = paginatedDeals.map(deal => {
+    dealsList.innerHTML = deals.map(deal => {
+        const expiryText = getExpiryText(deal.expirationDate);
+        const daysUntilExpiry = calculateDaysUntilExpiry(deal.expirationDate);
+        const isExpiringSoon = daysUntilExpiry >= 0 && daysUntilExpiry <= 3;
+        
         return `
             <div class="deal-card">
                 <div class="deal-header">
@@ -2007,21 +2083,6 @@ function displayDeals(deals) {
             </div>
         `;
     }).join('');
-    
-    // Add pagination controls if there are more deals
-    if (totalPages > 1) {
-        const paginationHTML = `
-            <div style="grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; gap: 16px; padding: 20px; text-align: center;">
-                <span style="color: var(--text-secondary);">Page ${currentPage} of ${totalPages}</span>
-                ${currentPage < totalPages ? `
-                    <button onclick="loadMoreDeals()" style="padding: 12px 24px; background: linear-gradient(135deg, var(--accent), var(--accent-light)); color: var(--bg-primary); border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; transition: all var(--transition);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 16px rgba(0, 212, 255, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                        <i class="fas fa-chevron-down"></i> Load More (${Math.min(dealsPerPage, deals.length - endIndex)} more)
-                    </button>
-                ` : '<span style="color: var(--text-tertiary);">No more deals to load</span>'}
-            </div>
-        `;
-        dealsList.innerHTML += paginationHTML;
-    }
 }
 
 // Sort deals based on selected option
@@ -2047,92 +2108,23 @@ function sortDeals(sortBy) {
             // Sort by game rating (highest first)
             sortedDeals.sort((a, b) => b.rating - a.rating);
             break;
+        case 'expiring':
+            // Sort by expiration date (expiring soon first)
+            sortedDeals.sort((a, b) => {
+                const dateA = normalizeDate(a.expirationDate);
+                const dateB = normalizeDate(b.expirationDate);
+                const daysA = Math.ceil((dateA - new Date()) / (1000 * 60 * 60 * 24));
+                const daysB = Math.ceil((dateB - new Date()) / (1000 * 60 * 60 * 24));
+                return daysA - daysB;
+            });
+            break;
+        default:
+            return;
     }
     
     // Update display with sorted deals
     displayDeals(sortedDeals);
 }
-
-// Load more deals pagination
-function loadMoreDeals() {
-    const totalPages = Math.ceil(currentDeals.length / dealsPerPage);
-    if (currentPage < totalPages) {
-        currentPage++;
-        const dealsList = document.getElementById('dealsList');
-        const startIndex = (currentPage - 1) * dealsPerPage;
-        const endIndex = startIndex + dealsPerPage;
-        const paginatedDeals = currentDeals.slice(startIndex, endIndex);
-        
-        const newDealsHTML = paginatedDeals.map(deal => {
-            return `
-                <div class="deal-card">
-                    <div class="deal-header">
-                        <h3 class="deal-title">${deal.title}</h3>
-                        <div class="deal-badges">
-                            <span class="badge">-${deal.discountPercent}%</span>
-                            ${deal.rating ? `<span class="badge">⭐ ${deal.rating}</span>` : ''}
-                        </div>
-                    </div>
-                    
-                    <div class="deal-body">
-                        <div class="deal-prices">
-                            <div class="price-item">
-                                <div class="price-label">Current</div>
-                                <div class="price-value">$${deal.price.toFixed(2)}</div>
-                                ${deal.originalPrice > deal.price ? `<div class="original-price">Was $${deal.originalPrice.toFixed(2)}</div>` : ''}
-                            </div>
-                            <div class="price-item">
-                                <div class="price-label">Save</div>
-                                <div class="price-value" style="color: var(--success);">$${(deal.originalPrice - deal.price).toFixed(2)}</div>
-                                <div class="discount-label">${deal.discountPercent}% off</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="deal-footer">
-                        <button class="deal-link" onclick="quickAddToCalculator(${deal.price})" title="Add to calculator">
-                            <i class="fas fa-plus"></i> Add to Calculator
-                        </button>
-                        <a href="${deal.storeUrl}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
-                            <i class="fas fa-external-link-alt"></i> View Deal
-                        </a>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
-        // Remove pagination button and append new deals
-        const paginationDiv = dealsList.querySelector('div:last-child');
-        if (paginationDiv && paginationDiv.style.gridColumn) {
-            paginationDiv.remove();
-        }
-        
-        dealsList.innerHTML += newDealsHTML;
-        
-        // Re-add pagination controls if there are still more pages
-        if (currentPage < totalPages) {
-            const remaining = currentDeals.length - endIndex;
-            const paginationHTML = `
-                <div style="grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; gap: 16px; padding: 20px; text-align: center;">
-                    <span style="color: var(--text-secondary);">Page ${currentPage} of ${totalPages}</span>
-                    <button onclick="loadMoreDeals()" style="padding: 12px 24px; background: linear-gradient(135deg, var(--accent), var(--accent-light)); color: var(--bg-primary); border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; transition: all var(--transition);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 16px rgba(0, 212, 255, 0.3)';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
-                        <i class="fas fa-chevron-down"></i> Load More (${Math.min(dealsPerPage, remaining)} more)
-                    </button>
-                </div>
-            `;
-            dealsList.innerHTML += paginationHTML;
-        } else {
-            const paginationHTML = `
-                <div style="grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; padding: 20px; text-align: center;">
-                    <span style="color: var(--text-secondary);">Page ${currentPage} of ${totalPages}</span>
-                    <span style="margin-left: 16px; color: var(--text-tertiary);">All deals loaded</span>
-                </div>
-            `;
-            dealsList.innerHTML += paginationHTML;
-        }
-    }
-}
-
 
 // Filter giveaways by platform - show only $0 games for Steam, all deals for All
 function filterDeals(platform) {
@@ -2238,7 +2230,7 @@ function scrollToSection(sectionId) {
 // Toggle Settings Panel
 function toggleSettings() {
     const settingsPanel = document.getElementById('settingsPanel');
-    settingsPanel.classList.toggle('active');
+    settingsPanel.classList.toggle('open');
 }
 
 // Open Steam game by fetching URL
@@ -2280,53 +2272,4 @@ function dedupeDeals(deals) {
   }
 
   return Array.from(map.values());
-}
-
-// Deal Modal Functions
-function openDealModal(deal) {
-    const modal = document.getElementById('dealModal');
-    const body = document.getElementById('dealModalBody');
-    
-    body.innerHTML = `
-        <div class="deal-card">
-            <div class="deal-header">
-                <h3 class="deal-title">${deal.title}</h3>
-                <div class="deal-badges">
-                    <span class="badge">-${deal.discountPercent}%</span>
-                    ${deal.rating ? `<span class="badge">⭐ ${deal.rating}</span>` : ''}
-                </div>
-            </div>
-            
-            <div class="deal-body">
-                <div class="deal-prices">
-                    <div class="price-item">
-                        <div class="price-label">Current</div>
-                        <div class="price-value">$${deal.price.toFixed(2)}</div>
-                        ${deal.originalPrice > deal.price ? `<div class="original-price">Was $${deal.originalPrice.toFixed(2)}</div>` : ''}
-                    </div>
-                    <div class="price-item">
-                        <div class="price-label">Save</div>
-                        <div class="price-value" style="color: var(--success);">$${(deal.originalPrice - deal.price).toFixed(2)}</div>
-                        <div class="discount-label">${deal.discountPercent}% off</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="deal-footer">
-                <button class="deal-link" onclick="quickAddToCalculator(${deal.price})" title="Add to calculator">
-                    <i class="fas fa-plus"></i> Add to Calculator
-                </button>
-                <a href="${deal.storeUrl}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
-                    <i class="fas fa-external-link-alt"></i> View Deal
-                </a>
-            </div>
-        </div>
-    `;
-    
-    modal.classList.add('active');
-}
-
-function closeDealModal() {
-    const modal = document.getElementById('dealModal');
-    modal.classList.remove('active');
 }
