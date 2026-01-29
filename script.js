@@ -1506,6 +1506,7 @@ function displayGamePricesLookup(gameName, gameID, gameDetails, pricesData) {
                                 <div class="price-item">
                                     <div class="price-label">Save</div>
                                     <div class="price-value" style="color: var(--success);">${formatPrice(savings)}</div>
+                                    <div class="discount-label">on steam tody</div>
                                 </div>
                             </div>
                         </div>
