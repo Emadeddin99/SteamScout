@@ -221,6 +221,11 @@ async function fetchCheapSharkDeals() {
                     break;
                 }
 
+                // Debug: log first deal sample to see data structure
+                if (pageNumber === 0 && data.length > 0) {
+                    console.log(`[API] Sample deal (page 0):`, JSON.stringify(data[0]));
+                }
+
                 console.log(`[API]   Page ${pageNumber}: Got ${data.length} deals`);
                 allDeals = allDeals.concat(data);
                 
