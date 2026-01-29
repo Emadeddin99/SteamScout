@@ -12,7 +12,7 @@ let deals = []; // Initialize deals array to prevent ReferenceError
 let currentDeals = [];
 let dealsLoading = false;
 let currentPage = 1;
-const dealsPerPage = 20;
+const dealsPerPage = 30;
 
 // Cache for deals data
 let dealsCache = {

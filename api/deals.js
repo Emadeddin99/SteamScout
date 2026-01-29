@@ -30,10 +30,10 @@ export default async function handler(req, res) {
         // Filter invalid deals
         deals = filterValidDeals(deals);
         
-        // Sort by discount descending, limit to 2000 deals max (CheapShark API can provide many more pages)
+        // Sort by discount descending, limit to 3000 deals max (CheapShark API 30 pages of 100)
         deals = deals
             .sort((a, b) => b.discount - a.discount)
-            .slice(0, 2000);
+            .slice(0, 3000);
 
         console.log(`[API] ✅ Returning ${deals.length} deals`);
 
@@ -193,7 +193,7 @@ async function fetchCheapSharkDeals() {
         console.log('[API] Fetching from CheapShark (fallback)...');
 
         let allDeals = [];
-        const maxPages = 20; // Fetch up to 20 pages = 2000 deals
+        const maxPages = 30; // Fetch up to 30 pages = 3000 deals
         const pageSize = 100; // CheapShark max per page
         
         // Fetch multiple pages
