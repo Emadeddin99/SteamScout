@@ -1189,12 +1189,8 @@ async function fetchGamePrice(gameName) {
             <div class="empty-history">
                 <i class="fas fa-exclamation-triangle"></i>
                 <p>Prices not available for "${gameName}"</p>
-                <p class="subtext">You can add this game and enter the price manually</p>
-                <button class="deals-btn" onclick="addGameFromSearch('${gameName}', 0)" style="margin-top: 15px;">
-                    <i class="fas fa-plus-circle"></i>
-                    Add "${gameName}" to Calculator
-                </button>
-                <button class="deals-btn" onclick="clearGameSearch()" style="margin-top: 10px;">
+                <p class="subtext">Try searching for another game or adjusting your search term</p>
+                <button class="deals-btn" onclick="clearGameSearch()" style="margin-top: 20px; max-width: 300px; margin-left: auto; margin-right: auto;">
                     <i class="fas fa-redo"></i>
                     Clear Search
                 </button>
@@ -2066,7 +2062,7 @@ function displayDeals(deals) {
                         </div>
                         <div class="price-item">
                             <div class="price-label">Save</div>
-                            <div class="price-value" style="color: var(--success);">$${(deal.originalPrice - deal.price).toFixed(2)} on Steam today</div>
+                            <div class="price-value" style="color: var(--success);">$${(deal.originalPrice - deal.price).toFixed(2)}</div>
                             <div class="discount-label">${deal.discountPercent}% off</div>
                         </div>
                     </div>
