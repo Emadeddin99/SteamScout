@@ -27,7 +27,7 @@ let currentGameSuggestions = []; // Store current suggestions for Enter key disp
 
 // Pagination
 let currentPage = 1;
-const dealsPerPage = 20;
+const dealsPerPage = 10;
 
 
 
