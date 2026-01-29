@@ -12,7 +12,7 @@ let deals = []; // Initialize deals array to prevent ReferenceError
 let currentDeals = [];
 let dealsLoading = false;
 let currentPage = 1;
-const dealsPerPage = 30;
+const dealsPerPage = 20;
 
 // Cache for deals data
 let dealsCache = {
@@ -51,18 +51,6 @@ function setupEventListeners() {
     const taxRateInput = document.getElementById('taxRateSlider');
     const gameCountInput = document.getElementById('gameCount');
     const header = document.querySelector('.header');
-    const suggestionsDiv = document.getElementById('searchSuggestions');
-    const searchInput = document.getElementById('gameSearchInput');
-    
-    // Close suggestions when clicking outside
-    document.addEventListener('click', function(e) {
-        if (suggestionsDiv && searchInput) {
-            if (!searchInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
-                suggestionsDiv.innerHTML = '';
-                suggestionsDiv.style.display = 'none';
-            }
-        }
-    });
     
     // Header shrinking on scroll
     window.addEventListener('scroll', function() {
@@ -974,28 +962,15 @@ function handleGameSearch(query) {
     
     if (!query.trim()) {
         suggestionsDiv.innerHTML = '';
-        suggestionsDiv.style.display = 'none';
         return;
     }
-    
-    // Show loading state
-    suggestionsDiv.style.display = 'block';
-    suggestionsDiv.innerHTML = '<div class="search-suggestion-loading"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
     
     searchTimeout = setTimeout(async () => {
         try {
             const suggestions = await fetchGameSuggestions(query);
-            
-            if (suggestions && suggestions.length > 0) {
-                displaySearchSuggestions(suggestions, query);
-            } else {
-                suggestionsDiv.innerHTML = '<div class="search-suggestion-empty"><i class="fas fa-search"></i> No games found</div>';
-                suggestionsDiv.style.display = 'block';
-            }
+            displaySearchSuggestions(suggestions, query);
         } catch (error) {
             console.error('Search error:', error);
-            suggestionsDiv.innerHTML = '<div class="search-suggestion-error"><i class="fas fa-exclamation-triangle"></i> Search failed</div>';
-            suggestionsDiv.style.display = 'block';
         }
     }, 300);
 }
@@ -1038,57 +1013,43 @@ function displaySearchSuggestions(games, query) {
     const suggestionsDiv = document.getElementById('searchSuggestions');
     
     if (!games || games.length === 0) {
-        suggestionsDiv.innerHTML = '';
-        suggestionsDiv.style.display = 'none';
+        suggestionsDiv.innerHTML = `
+            <div class="search-suggestion-item" style="text-align: center; color: var(--text-tertiary);">
+                <i class="fas fa-search"></i>
+                <p>No games found for "${query}"</p>
+            </div>
+        `;
         return;
     }
     
-    // Clear existing suggestions
-    suggestionsDiv.innerHTML = '';
-    suggestionsDiv.style.display = 'block';
-    
-    games.forEach((game, index) => {
+    suggestionsDiv.innerHTML = games.map((game, index) => {
         const gameTitle = game.displayTitle || game.title || game.name;
         const gameID = game.id || index;
+        const gameName = gameTitle.replace(/'/g, "\\'");
         const gameImage = game.image || '';
         const rating = game.rating ? `★${game.rating.toFixed(1)}` : '';
         
-        // Create suggestion item element
-        const suggestionItem = document.createElement('div');
-        suggestionItem.className = 'search-suggestion-item';
-        
-        // Add click handler directly to avoid quote escaping issues
-        suggestionItem.addEventListener('click', () => {
-            lookupGamePrices(gameTitle, gameID);
-        });
-        
-        // Build inner HTML
-        suggestionItem.innerHTML = `
-            ${gameImage ? `<img src="${gameImage}" alt="${gameTitle}" class="search-suggestion-thumbnail">` : `<div class="search-suggestion-thumbnail"><i class="fas fa-image"></i></div>`}
-            <div class="search-suggestion-info">
-                <div class="search-suggestion-name">${gameTitle}</div>
-                ${rating ? `<div class="search-suggestion-meta">${rating}</div>` : `<div class="search-suggestion-meta">Click to view prices</div>`}
+        return `
+            <div class="search-suggestion-item" onclick="lookupGamePrices('${gameName}', ${gameID})">
+                ${gameImage ? `<img src="${gameImage}" alt="${gameTitle}" class="search-suggestion-thumbnail">` : `<div class="search-suggestion-thumbnail" style="background: var(--bg-primary);"><i class="fas fa-image"></i></div>`}
+                <div class="search-suggestion-info">
+                    <div class="search-suggestion-name">${gameTitle}</div>
+                    ${rating ? `<div class="search-suggestion-meta">${rating}</div>` : `<div class="search-suggestion-meta">Click to view prices</div>`}
+                </div>
             </div>
         `;
-        
-        suggestionsDiv.appendChild(suggestionItem);
-    });
+    }).join('');
 }
 
 // Lookup game prices (when clicking suggestion)
 async function lookupGamePrices(gameName, gameID) {
     const searchInput = document.getElementById('gameSearchInput');
-    const suggestionsDiv = document.getElementById('searchSuggestions');
-    
     if (searchInput) {
         searchInput.value = gameName;
     }
     
     // Hide suggestions
-    if (suggestionsDiv) {
-        suggestionsDiv.innerHTML = '';
-        suggestionsDiv.style.display = 'none';
-    }
+    document.getElementById('searchSuggestions').innerHTML = '';
     
     // Show loading - use searchResultsList if it exists
     const resultsList = document.getElementById('searchResultsList') || document.getElementById('dealsList');
@@ -1150,14 +1111,14 @@ async function lookupGamePrices(gameName, gameID) {
         console.error('Price lookup error:', error);
         resultsList.innerHTML = `
             <div class="empty-history">
-                <i class="fas fa-search"></i>
-                <p>Game Not Found</p>
-                <p class="subtext">The game "${gameName}" wasn't found on available stores</p>
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Couldn't fetch details for "${gameName}"</p>
+                <p class="subtext">You can add this game and enter the price manually</p>
                 <button class="deals-btn" onclick="addGameManual('${gameName}')" style="margin-top: 15px;">
                     <i class="fas fa-plus-circle"></i>
-                    Add to Calculator
+                    Add "${gameName}" to Calculator
                 </button>
-                <button class="deals-btn" onclick="clearGameSearch()" style="margin-top: 10px; background: linear-gradient(135deg, var(--text-tertiary), #64748b); color: white;">
+                <button class="deals-btn" onclick="clearGameSearch()" style="margin-top: 10px;">
                     <i class="fas fa-redo"></i>
                     Clear Search
                 </button>
@@ -1228,14 +1189,14 @@ async function fetchGamePrice(gameName) {
         console.error('Price fetch error:', error);
         dealsList.innerHTML = `
             <div class="empty-history">
-                <i class="fas fa-search"></i>
-                <p>Game Not Found</p>
-                <p class="subtext">The game "${gameName}" wasn't found on available stores</p>
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Prices not available for "${gameName}"</p>
+                <p class="subtext">You can add this game and enter the price manually</p>
                 <button class="deals-btn" onclick="addGameFromSearch('${gameName}', 0)" style="margin-top: 15px;">
                     <i class="fas fa-plus-circle"></i>
-                    Add to Calculator
+                    Add "${gameName}" to Calculator
                 </button>
-                <button class="deals-btn" onclick="clearGameSearch()" style="margin-top: 10px; background: linear-gradient(135deg, var(--text-tertiary), #64748b); color: white;">
+                <button class="deals-btn" onclick="clearGameSearch()" style="margin-top: 10px;">
                     <i class="fas fa-redo"></i>
                     Clear Search
                 </button>
@@ -1583,16 +1544,10 @@ function addGameWithPrice(gameName, price) {
 // Clear game search
 function clearGameSearch() {
     const searchInput = document.getElementById('gameSearchInput');
-    const suggestionsDiv = document.getElementById('searchSuggestions');
-    
     if (searchInput) {
         searchInput.value = '';
     }
-    
-    if (suggestionsDiv) {
-        suggestionsDiv.innerHTML = '';
-        suggestionsDiv.style.display = 'none';
-    }
+    document.getElementById('searchSuggestions').innerHTML = '';
     
     // Reload all deals
     if (currentDeals.length > 0) {
