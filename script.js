@@ -443,16 +443,37 @@ function saveToHistory() {
         return;
     }
     
+    // Create unique ID with timestamp
+    const uniqueId = Date.now().toString() + '_' + Math.random().toString(36).substr(2, 9);
+    
     const historyItem = {
         ...currentCalculation,
-        id: Date.now().toString(),
+        id: uniqueId,
         date: new Date().toLocaleString('en-US', {
             month: 'short',
             day: 'numeric',
             hour: '2-digit',
             minute: '2-digit'
-        })
+        }),
+        timestamp: Date.now()
     };
+    
+    // Store price inputs in cache with expiry (7 days)
+    const cacheData = {
+        games: currentCalculation.games || [],
+        gameCount: currentCalculation.count,
+        taxRate: currentCalculation.taxRate,
+        timestamp: Date.now(),
+        expiry: Date.now() + (7 * 24 * 60 * 60 * 1000) // 7 days from now
+    };
+    
+    // Save to sessionStorage (browser cache)
+    const calculationCache = JSON.parse(sessionStorage.getItem('calculationCache') || '{}');
+    calculationCache[uniqueId] = cacheData;
+    sessionStorage.setItem('calculationCache', JSON.stringify(calculationCache));
+    
+    // Clean up expired cache entries
+    cleanupExpiredCache();
     
     calculationHistory.unshift(historyItem);
     
@@ -465,6 +486,24 @@ function saveToHistory() {
     loadHistory();
     
     showNotification("Calculation saved to history!", "success");
+}
+
+// Clean up expired cache entries (older than 7 days)
+function cleanupExpiredCache() {
+    const calculationCache = JSON.parse(sessionStorage.getItem('calculationCache') || '{}');
+    const now = Date.now();
+    let cleaned = false;
+    
+    for (const key in calculationCache) {
+        if (calculationCache[key].expiry < now) {
+            delete calculationCache[key];
+            cleaned = true;
+        }
+    }
+    
+    if (cleaned) {
+        sessionStorage.setItem('calculationCache', JSON.stringify(calculationCache));
+    }
 }
 
 function loadHistory() {
@@ -506,7 +545,7 @@ function loadHistory() {
                         <span class="history-detail-value">${item.count}</span>
                     </div>
                     <div class="history-detail-row">
-                        <span class="history-detail-label">Tax</span>
+                        <span class="history-detail-label">Tax Rate</span>
                         <span class="history-detail-value">${item.taxRate.toFixed(1)}%</span>
                     </div>
                     <div class="history-detail-row">
@@ -514,11 +553,18 @@ function loadHistory() {
                         <span class="history-detail-value">$${item.subtotal ? item.subtotal.toFixed(2) : (item.total / (1 + item.taxRate/100)).toFixed(2)}</span>
                     </div>
                     <div class="history-detail-row">
+                        <span class="history-detail-label">Tax Amount</span>
+                        <span class="history-detail-value">$${(item.total - (item.subtotal ? item.subtotal : (item.total / (1 + item.taxRate/100)))).toFixed(2)}</span>
+                    </div>
+                    <div class="history-detail-row">
                         <span class="history-detail-label">Total</span>
                         <span class="history-detail-value" style="color: var(--accent-light); font-size: var(--font-size-lg);">$${item.total.toFixed(2)}</span>
                     </div>
                 </div>
                 <div class="history-actions">
+                    <button class="history-action-btn restore" onclick="restoreFromHistory('${item.id}')">
+                        <i class="fas fa-redo"></i> Restore
+                    </button>
                     <button class="history-action-btn delete" onclick="deleteHistoryItem('${item.id}')">
                         <i class="fas fa-trash"></i> Delete
                     </button>
@@ -530,25 +576,55 @@ function loadHistory() {
 
 function restoreFromHistory(itemId) {
     const item = calculationHistory.find(h => h.id === itemId);
-    if (!item) return;
-    
-    // Restore game count
-    document.getElementById('gameCount').value = item.count;
-    updateGameFields();
-    
-    // Restore prices
-    const inputs = document.querySelectorAll('#gameInputs input');
-    if (item.games) {
-        item.games.forEach((price, index) => {
-            if (inputs[index]) {
-                inputs[index].value = price;
-            }
-        });
+    if (!item) {
+        showNotification("Calculation not found", "error");
+        return;
     }
     
-    // Restore tax rate
-    document.getElementById('taxRateSlider').value = item.taxRate;
-    updateTaxDisplay();
+    // Try to get cached price data first
+    const calculationCache = JSON.parse(sessionStorage.getItem('calculationCache') || '{}');
+    const cachedData = calculationCache[itemId];
+    
+    // Check if cache is still valid (not expired)
+    if (cachedData && cachedData.expiry > Date.now()) {
+        // Restore from cache
+        document.getElementById('gameCount').value = cachedData.gameCount;
+        updateGameFields();
+        
+        // Restore prices from cache
+        const inputs = document.querySelectorAll('#gameInputs input');
+        if (cachedData.games && cachedData.games.length > 0) {
+            cachedData.games.forEach((price, index) => {
+                if (inputs[index]) {
+                    inputs[index].value = price || '';
+                }
+            });
+        }
+        
+        // Restore tax rate
+        document.getElementById('taxRateSlider').value = cachedData.taxRate;
+        updateTaxDisplay();
+    } else {
+        // Fallback to history item data if cache is expired
+        document.getElementById('gameCount').value = item.count;
+        updateGameFields();
+        
+        if (item.games) {
+            const inputs = document.querySelectorAll('#gameInputs input');
+            item.games.forEach((price, index) => {
+                if (inputs[index]) {
+                    inputs[index].value = price || '';
+                }
+            });
+        }
+        
+        document.getElementById('taxRateSlider').value = item.taxRate;
+        updateTaxDisplay();
+        
+        if (!cachedData) {
+            showNotification("Cache expired, using saved calculation data", "info");
+        }
+    }
     
     // Scroll to calculator
     scrollToSection('calculator');
@@ -576,6 +652,12 @@ function clearHistory() {
 function deleteHistoryItem(itemId) {
     calculationHistory = calculationHistory.filter(item => item.id !== itemId);
     localStorage.setItem('steamCalculatorHistory', JSON.stringify(calculationHistory));
+    
+    // Also delete from cache
+    const calculationCache = JSON.parse(sessionStorage.getItem('calculationCache') || '{}');
+    delete calculationCache[itemId];
+    sessionStorage.setItem('calculationCache', JSON.stringify(calculationCache));
+    
     loadHistory();
     showNotification("Calculation deleted", "info");
 }
