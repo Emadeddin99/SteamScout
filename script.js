@@ -948,13 +948,8 @@ function initializeDealsFilters() {
         gameSearchInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                // Display all suggestion games as cards
-                if (currentGameSuggestions && currentGameSuggestions.length > 0) {
-                    displayAllSuggestionsAsCards(currentGameSuggestions);
-                } else {
-                    // Fallback if no suggestions
-                    searchGamesByName(this.value);
-                }
+                // Close suggestions
+                document.getElementById('searchSuggestions').innerHTML = '';
             }
         });
     }
