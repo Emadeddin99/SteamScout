@@ -111,9 +111,16 @@ export default async function handler(req, res) {
         }
 
         const appId = bestMatch.appid;
-        console.log(`[API] Best match: "${bestMatch.name}" (appid: ${appId}, score: ${bestScore})`);
+        const returnedTitle = bestMatch.name;
+        console.log(`[API] Best match: "${returnedTitle}" (appid: ${appId}, score: ${bestScore})`);
 
-
+        // Check if the returned title is actually a good match
+        // If score is low, include a warning and provide search link as fallback
+        let titleMismatch = false;
+        if (bestScore < 300) {
+            console.warn(`[API] Low confidence match (score: ${bestScore}) - title may not match search`);
+            titleMismatch = true;
+        }
 
         // Get app details directly from Steam (server request, no CORS issues)
         const steamDetailsUrl = `https://store.steampowered.com/api/appdetails?appids=${appId}&cc=US`;
@@ -190,7 +197,9 @@ export default async function handler(req, res) {
             appId,
             title: appData.name || gameName,
             prices,
-            noPriceData: false
+            noPriceData: false,
+            titleMismatch: titleMismatch,
+            searchFallbackUrl: `https://store.steampowered.com/search/?term=${encodeURIComponent(gameName)}`
         });
 
     } catch (error) {

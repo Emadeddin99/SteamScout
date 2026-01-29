@@ -1076,6 +1076,11 @@ async function lookupGamePrices(gameName, gameID) {
             console.log(`[GAME LOOKUP] Response:`, searchData);
             
             if (searchResponse.ok) {
+                if (searchData.titleMismatch) {
+                    console.warn(`[GAME LOOKUP] Title mismatch - returned "${searchData.title}" for search "${gameName}"`);
+                    console.warn(`[GAME LOOKUP] Consider using fallback: ${searchData.searchFallbackUrl}`);
+                }
+                
                 if (searchData.prices && searchData.prices.length > 0) {
                     pricesData = searchData.prices;
                     console.log(`[GAME LOOKUP] Found prices for ${searchData.title}`);
