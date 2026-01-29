@@ -1493,10 +1493,6 @@ function displayGamePricesLookup(gameName, gameID, gameDetails, pricesData) {
                         <div class="deal-body">
                             <div class="deal-prices">
                                 <div class="price-item">
-                                    <div class="price-label">Full Price</div>
-                                    <div class="price-value">${formatPrice(bestPrice.originalPrice)}</div>
-                                </div>
-                                <div class="price-item">
                                     <div class="price-label">Current Price</div>
                                     <div class="price-value">${formatPrice(bestPrice.price)}</div>
                                     ${bestPrice.discount > 0 ? `<div class="discount-label">${bestPrice.discount}% off</div>` : ''}
