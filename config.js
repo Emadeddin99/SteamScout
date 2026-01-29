@@ -14,6 +14,16 @@ const API_CONFIG = {
     EPIC_FREEGAMES_URL: 'https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions',
 };
 
+// Create appConfig object with getter methods for script.js compatibility
+const appConfig = {
+    getRawgApiKey() {
+        return API_CONFIG.RAWG_API_KEY;
+    },
+    getRawgUrl() {
+        return API_CONFIG.RAWG_GAMES_URL;
+    }
+};
+
 // Direct fetch - no proxy needed for these APIs
 async function directFetch(url, retries = 2) {
     const headers = {
