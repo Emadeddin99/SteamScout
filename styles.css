@@ -1129,6 +1129,36 @@ a:hover {
     gap: 16px;
 }
 
+.deal-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: var(--bg-primary);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--accent);
+}
+
+.info-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.info-label i {
+    color: var(--accent);
+    font-size: 1rem;
+}
+
+.info-value {
+    color: var(--accent-light);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
 .deal-prices {
     display: grid;
     grid-template-columns: 1fr 1fr;

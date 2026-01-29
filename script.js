@@ -22,6 +22,7 @@ let dealsCache = {
 // Search cache
 let gameSearchCache = [];
 let searchTimeout = null;
+let currentGameSuggestions = []; // Store current suggestions for Enter key display
 
 
 
@@ -947,10 +948,9 @@ function initializeDealsFilters() {
         gameSearchInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                // Get first suggestion and trigger it
-                const firstSuggestion = document.querySelector('.search-suggestion-item');
-                if (firstSuggestion) {
-                    firstSuggestion.click();
+                // Display all suggestion games as cards
+                if (currentGameSuggestions && currentGameSuggestions.length > 0) {
+                    displayAllSuggestionsAsCards(currentGameSuggestions);
                 } else {
                     // Fallback if no suggestions
                     searchGamesByName(this.value);
@@ -1017,6 +1017,9 @@ async function fetchGameSuggestions(query) {
 function displaySearchSuggestions(games, query) {
     const suggestionsDiv = document.getElementById('searchSuggestions');
     
+    // Store current suggestions for Enter key handling
+    currentGameSuggestions = games || [];
+    
     if (!games || games.length === 0) {
         suggestionsDiv.innerHTML = `
             <div class="search-suggestion-item" style="text-align: center; color: var(--text-tertiary);">
@@ -1044,6 +1047,63 @@ function displaySearchSuggestions(games, query) {
             </div>
         `;
     }).join('');
+}
+
+// Display all suggestions as cards when pressing Enter
+function displayAllSuggestionsAsCards(games) {
+    // Hide suggestions dropdown
+    document.getElementById('searchSuggestions').innerHTML = '';
+    
+    const dealsList = document.getElementById('dealsList');
+    
+    if (!games || games.length === 0) {
+        dealsList.innerHTML = `
+            <div class="empty-history">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>No games to display</p>
+                <p class="subtext">Try searching for another game</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // Create cards for all suggestions
+    let htmlContent = games.map((game) => {
+        const gameTitle = game.displayTitle || game.title || game.name;
+        const gameImage = game.image || '';
+        const rating = game.rating ? `★${game.rating.toFixed(1)}` : 'No rating';
+        const gameName = gameTitle.replace(/'/g, "\\'");
+        const gameID = game.id || 0;
+        
+        return `
+            <div class="deal-card">
+                <div class="deal-header">
+                    <h3 class="deal-title">${gameTitle}</h3>
+                </div>
+                
+                ${gameImage ? `<div class="deal-game-image" style="background-image: url('${gameImage}'); background-size: cover; background-position: center; height: 150px; width: 100%;"></div>` : ''}
+                
+                <div class="deal-body">
+                    <div class="deal-info-row">
+                        <span class="info-label"><i class="fas fa-star"></i> Rating</span>
+                        <span class="info-value">${rating}</span>
+                    </div>
+                    <div class="deal-info-row">
+                        <span class="info-label"><i class="fas fa-info-circle"></i> Source</span>
+                        <span class="info-value">RAWG Database</span>
+                    </div>
+                </div>
+                
+                <div class="deal-footer">
+                    <button class="deal-link" onclick="lookupGamePrices('${gameName}', ${gameID})">
+                        <i class="fas fa-search"></i> View Prices
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    dealsList.innerHTML = htmlContent;
 }
 
 // Lookup game prices (when clicking suggestion)
