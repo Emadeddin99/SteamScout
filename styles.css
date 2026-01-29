@@ -1430,6 +1430,7 @@ a:hover {
     width: 100%;
     max-width: 100%;
     animation: fadeInUp 0.5s ease-out;
+    grid-column: 1 / -1;
 }
 
 .pagination-info {
