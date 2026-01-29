@@ -2047,7 +2047,7 @@ async function loadSampleDeals() {
 }
 
 // Display deals in the list
-function displayDeals(deals) {
+function displayDeals(deals, resetPage = true) {
     const dealsList = document.getElementById('dealsList');
     
     if (!deals || deals.length === 0) {
@@ -2064,8 +2064,10 @@ function displayDeals(deals) {
     // Store currently displayed deals for pagination
     displayedDeals = deals;
     
-    // Reset to page 1 when displaying new deals
-    currentPage = 1;
+    // Reset to page 1 only when displaying new deals (not when just changing pages)
+    if (resetPage) {
+        currentPage = 1;
+    }
     
     // Calculate pagination
     const totalPages = Math.ceil(deals.length / dealsPerPage);
@@ -2150,7 +2152,7 @@ function displayDeals(deals) {
 // Navigate to a specific page
 function goToPage(page) {
     currentPage = page;
-    displayDeals(displayedDeals);
+    displayDeals(displayedDeals, false);
     // Scroll to deals section
     document.getElementById('dealsList').scrollIntoView({ behavior: 'smooth' });
 }
