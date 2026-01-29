@@ -66,31 +66,43 @@ export default async function handler(req, res) {
         let bestMatch = searchData[0];
         let bestScore = 0;
 
-        for (const result of searchData.slice(0, 10)) {
+        // Extract year if present in search query
+        const yearMatch = gameName.match(/\((\d{4})\)/);
+        const searchYear = yearMatch ? yearMatch[1] : null;
+        const baseGameName = gameName.split('(')[0].trim().toLowerCase();
+
+        console.log(`[API] Searching for: "${gameName}", base: "${baseGameName}", year: ${searchYear}`);
+
+        for (const result of searchData.slice(0, 15)) {
             const titleLower = result.name.toLowerCase();
             let score = 0;
+
+            // Penalize sequel titles if we're not searching for sequels
+            const isSequel = /ragnar|remaster|remake|director'?s cut|edition|deluxe|goty|complete/.test(titleLower);
+            const wantSequel = /ragnar|remaster|remake|director'?s cut|edition|deluxe|goty|complete/.test(gameNameLower);
+            
+            if (isSequel && !wantSequel) {
+                score = -100; // Penalize sequels
+            }
 
             // Exact match gets highest score
             if (titleLower === gameNameLower) {
                 score = 1000;
             }
-            // Starts with search term
-            else if (titleLower.startsWith(gameNameLower)) {
+            // If year specified, prioritize results with that year
+            else if (searchYear && titleLower.includes(searchYear)) {
+                score = 800;
+            }
+            // Starts with base game name
+            else if (titleLower.startsWith(baseGameName)) {
                 score = 500;
             }
-            // Exact substring match
-            else if (titleLower.includes(gameNameLower)) {
+            // Contains base game name
+            else if (titleLower.includes(baseGameName)) {
                 score = 300;
             }
-            // Partial match on main title (before special chars)
-            else {
-                const mainTitleOnly = gameNameLower.split('(')[0].trim();
-                if (titleLower.includes(mainTitleOnly)) {
-                    score = 150;
-                }
-            }
 
-            console.log(`[API] Result: "${result.name}" (id: ${result.appid}) - score: ${score}`);
+            console.log(`[API] Result: "${result.name}" - score: ${score}`);
 
             if (score > bestScore) {
                 bestScore = score;
@@ -100,6 +112,7 @@ export default async function handler(req, res) {
 
         const appId = bestMatch.appid;
         console.log(`[API] Best match: "${bestMatch.name}" (appid: ${appId}, score: ${bestScore})`);
+
 
 
         // Get app details directly from Steam (server request, no CORS issues)
