@@ -490,6 +490,7 @@ a:hover {
 
 /* Remove spinner for Firefox */
 .tax-input[type=number] {
+    appearance: textfield;
     -moz-appearance: textfield;
 }
 
