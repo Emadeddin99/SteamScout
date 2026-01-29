@@ -223,7 +223,6 @@
                             <option value="deal">Best Deals</option>
                             <option value="discount">Highest Discount</option>
                             <option value="price">Lowest Price</option>
-                            <option value="expiring">Expiring Soon</option>
                         </select>
                         <button class="refresh-btn" onclick="refreshDeals()" title="Refresh deals">
                             <i class="fas fa-sync-alt"></i>
@@ -238,6 +237,17 @@
                     </div>
                 </div>
             </section>
+
+            <!-- Deal Details Modal -->
+            <div id="dealModal" class="deal-modal">
+                <div class="deal-modal-overlay" onclick="closeDealModal()"></div>
+                <div class="deal-modal-content">
+                    <button class="deal-modal-close" onclick="closeDealModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <div id="dealModalBody"></div>
+                </div>
+            </div>
 
             <!-- History Section -->
             <section id="history" class="section history-section">
