@@ -12,7 +12,7 @@ let deals = []; // Initialize deals array to prevent ReferenceError
 let currentDeals = [];
 let dealsLoading = false;
 let currentPage = 1;
-const dealsPerPage = 20;
+const dealsPerPage = 50;
 
 // Cache for deals data
 let dealsCache = {
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeTaxPresets();
     calculateTotal();
     initializeDealsFilters();
-    loadDeals();
+    // Deals will be loaded lazily when user navigates to deals section
     
     // Update current tax display
     updateTaxDisplay();
@@ -2303,8 +2303,21 @@ function quickAddToCalculator(price) {
 
 // Dashboard Navigation - Scroll to Section
 function scrollToSection(sectionId) {
+    // Hide all sections
+    document.querySelectorAll('[data-section]').forEach(section => {
+        section.style.display = 'none';
+    });
+    
+    // Show the target section
     const section = document.getElementById(sectionId);
     if (section) {
+        section.style.display = 'block';
+        
+        // Load deals only when deals section is shown
+        if (sectionId === 'deals' && currentDeals.length === 0 && !dealsLoading) {
+            loadDeals();
+        }
+        
         section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
