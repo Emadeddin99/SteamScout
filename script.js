@@ -2066,7 +2066,7 @@ function displayDeals(deals) {
                         </div>
                         <div class="price-item">
                             <div class="price-label">Save</div>
-                            <div class="price-value" style="color: var(--success);">$${(deal.originalPrice - deal.price).toFixed(2)}</div>
+                            <div class="price-value" style="color: var(--success);">$${(deal.originalPrice - deal.price).toFixed(2)} on Steam today</div>
                             <div class="discount-label">${deal.discountPercent}% off</div>
                         </div>
                     </div>
