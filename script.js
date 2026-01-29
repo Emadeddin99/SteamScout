@@ -522,9 +522,6 @@ function loadHistory() {
                     <strong>Games:</strong> ${item.games ? item.games.join(', $') : 'N/A'}
                 </div>
                 <div class="history-actions">
-                    <button class="history-action-btn" onclick="restoreFromHistory('${item.id}')">
-                        <i class="fas fa-undo"></i> Restore
-                    </button>
                     <button class="history-action-btn delete" onclick="deleteHistoryItem('${item.id}')">
                         <i class="fas fa-trash"></i> Delete
                     </button>
