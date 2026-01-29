@@ -60,8 +60,47 @@ export default async function handler(req, res) {
             });
         }
 
-        const appId = searchData[0].appid;
-        console.log(`[API] Found Steam app ID ${appId} for ${gameName}`);
+        // Find best match from search results
+        // Score each result and pick the best one
+        const gameNameLower = gameName.toLowerCase();
+        let bestMatch = searchData[0];
+        let bestScore = 0;
+
+        for (const result of searchData.slice(0, 10)) {
+            const titleLower = result.name.toLowerCase();
+            let score = 0;
+
+            // Exact match gets highest score
+            if (titleLower === gameNameLower) {
+                score = 1000;
+            }
+            // Starts with search term
+            else if (titleLower.startsWith(gameNameLower)) {
+                score = 500;
+            }
+            // Exact substring match
+            else if (titleLower.includes(gameNameLower)) {
+                score = 300;
+            }
+            // Partial match on main title (before special chars)
+            else {
+                const mainTitleOnly = gameNameLower.split('(')[0].trim();
+                if (titleLower.includes(mainTitleOnly)) {
+                    score = 150;
+                }
+            }
+
+            console.log(`[API] Result: "${result.name}" (id: ${result.appid}) - score: ${score}`);
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestMatch = result;
+            }
+        }
+
+        const appId = bestMatch.appid;
+        console.log(`[API] Best match: "${bestMatch.name}" (appid: ${appId}, score: ${bestScore})`);
+
 
         // Get app details directly from Steam (server request, no CORS issues)
         const steamDetailsUrl = `https://store.steampowered.com/api/appdetails?appids=${appId}&cc=US`;
