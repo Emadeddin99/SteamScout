@@ -30,10 +30,10 @@ export default async function handler(req, res) {
         // Filter invalid deals
         deals = filterValidDeals(deals);
         
-        // Sort by discount descending, limit to 100
+        // Sort by discount descending, limit to 3000
         deals = deals
             .sort((a, b) => b.discount - a.discount)
-            .slice(0, 100);
+            .slice(0, 3000);
 
         console.log(`[API] ✅ Returning ${deals.length} deals`);
 
@@ -191,30 +191,43 @@ async function fetchCheapSharkDeals() {
     try {
         console.log('[API] Fetching from CheapShark (fallback)...');
 
-        // Filter for Steam store specifically (storeID=1) and get a good page size
-        const url = 'https://www.cheapshark.com/api/1.0/deals?storeID=1&pageNumber=0&pageSize=100&sortBy=Deal Rating';
+        let allDeals = [];
+        const pageSize = 100;
+        const maxPages = 30; // 30 pages * 100 deals = 3000 deals
         
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'SteamScout/1.0'
+        // Fetch multiple pages to get more deals
+        for (let pageNumber = 0; pageNumber < maxPages; pageNumber++) {
+            const url = `https://www.cheapshark.com/api/1.0/deals?storeID=1&pageNumber=${pageNumber}&pageSize=${pageSize}&sortBy=Deal Rating`;
+            
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'SteamScout/1.0'
+                }
+            });
+
+            if (!response.ok) {
+                console.warn(`[API] CheapShark page ${pageNumber} returned ${response.status}`);
+                break; // Stop pagination on error
             }
-        });
 
-        if (!response.ok) {
-            throw new Error(`CheapShark returned ${response.status}`);
+            const data = await response.json();
+
+            if (!Array.isArray(data) || data.length === 0) {
+                console.log(`[API] CheapShark page ${pageNumber}: No more deals`);
+                break; // No more deals to fetch
+            }
+
+            console.log(`[API] CheapShark page ${pageNumber}: ${data.length} deals`);
+            allDeals = allDeals.concat(data);
+            
+            // Small delay between requests to be respectful
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
 
-        const data = await response.json();
-
-        if (!Array.isArray(data)) {
-            console.warn('[API] Invalid CheapShark response');
-            return [];
-        }
-
-        console.log(`[API] CheapShark returned ${data.length} deals`);
+        console.log(`[API] CheapShark total fetched: ${allDeals.length} deals across all pages`);
 
         try {
-            const normalized = data
+            const normalized = allDeals
                 .map((deal, idx) => {
                     try {
                         const result = normalizeCheapSharkDeal(deal);
