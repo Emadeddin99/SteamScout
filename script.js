@@ -1068,59 +1068,22 @@ async function lookupGamePrices(gameName, gameID) {
         let pricesData = [];
         
         try {
-            const dealsResponse = await fetch('/api/deals');
-            if (dealsResponse.ok) {
-                const dealsData = await dealsResponse.json();
-                console.log(`[DEALS] Fetched ${dealsData.deals?.length || 0} deals from backend`);
+            // Call Steam search endpoint to fetch current pricing from Steam
+            const steamResponse = await fetch(`/api/steam-search?gameName=${encodeURIComponent(gameName)}`);
+            
+            if (steamResponse.ok) {
+                const steamData = await steamResponse.json();
+                console.log(`[STEAM LOOKUP] Response:`, steamData);
                 
-                // Find deals matching this game name
-                if (dealsData.deals && Array.isArray(dealsData.deals)) {
-                    const matchingDeals = dealsData.deals.filter(d => 
-                        d.title.toLowerCase().includes(gameName.toLowerCase())
-                    );
-                    console.log(`[DEALS] Found ${matchingDeals.length} deals matching "${gameName}"`);
-                    
-                    if (matchingDeals.length > 0) {
-                        console.log(`[DEALS] Sample match:`, matchingDeals[0]);
-                    } else {
-                        // Try looser matching - first word of game name
-                        const firstWord = gameName.split('(')[0].trim().split(' ')[0].toLowerCase();
-                        const looserMatches = dealsData.deals.filter(d => 
-                            d.title.toLowerCase().includes(firstWord)
-                        );
-                        console.log(`[DEALS] Looser match (first word "${firstWord}"): ${looserMatches.length} deals`);
-                        if (looserMatches.length > 0) {
-                            console.log(`[DEALS] Sample looser match:`, looserMatches[0]);
-                            pricesData = looserMatches.slice(0, 1).map(d => ({
-                                shop: { name: 'Steam' },
-                                price: d.salePrice,
-                                regular: d.normalPrice,
-                                url: d.url,
-                                discount: d.discount,
-                                active: 1,
-                                source: 'deals'
-                            }));
-                        }
-                    }
-                    
-                    // Convert to price format for display
-                    if (pricesData.length === 0 && matchingDeals.length > 0) {
-                        pricesData = matchingDeals.map(d => ({
-                            shop: { name: 'Steam' },
-                            price: d.salePrice,
-                            regular: d.normalPrice,
-                            url: d.url,
-                            discount: d.discount,
-                            active: 1,
-                            source: 'deals'
-                        }));
-                    }
+                if (steamData.prices && steamData.prices.length > 0) {
+                    pricesData = steamData.prices;
+                    console.log(`[STEAM LOOKUP] Found prices for ${gameName}`);
                 }
             } else {
-                console.warn(`[DEALS] Backend returned status ${dealsResponse.status}`);
+                console.warn(`[STEAM LOOKUP] Steam search returned status ${steamResponse.status}`);
             }
         } catch (e) {
-            console.warn('Could not fetch deals:', e);
+            console.warn('Could not fetch Steam prices:', e);
         }
         
         console.log(`[LOOKUP] Found ${pricesData.length} prices for display`);

@@ -1,8 +1,33 @@
 /**
  * Steam Search API Handler
  * Searches for games on Steam and fetches pricing via CORS proxy
- * Avoids direct corsproxy usage from frontend
+ * Includes retry logic for reliability
  */
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // ms
+
+async function fetchWithRetry(url, retries = MAX_RETRIES) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            const response = await fetch(url);
+            if (response.ok || response.status !== 403) {
+                return response;
+            }
+            console.log(`[API] Attempt ${i + 1}/${retries} returned ${response.status}, retrying...`);
+            if (i < retries - 1) {
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (i + 1)));
+            }
+        } catch (error) {
+            console.error(`[API] Attempt ${i + 1}/${retries} failed:`, error.message);
+            if (i < retries - 1) {
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * (i + 1)));
+            }
+        }
+    }
+    // Return the last response even if it failed
+    return fetch(url);
+}
 
 export default async function handler(req, res) {
     // Enable CORS
@@ -30,7 +55,7 @@ export default async function handler(req, res) {
         const steamSearchUrl = `https://steamcommunity.com/actions/SearchApps/${encodeURIComponent(gameName)}`;
         const corsProxyUrl = `https://corsproxy.io/?${encodeURIComponent(steamSearchUrl)}`;
 
-        const searchResponse = await fetch(corsProxyUrl);
+        const searchResponse = await fetchWithRetry(corsProxyUrl);
 
         if (!searchResponse.ok) {
             console.error(`[API] Steam search returned status ${searchResponse.status}`);
@@ -59,7 +84,7 @@ export default async function handler(req, res) {
         const steamDetailsUrl = `https://store.steampowered.com/api/appdetails?appids=${appId}&cc=US`;
         const corsDetailsUrl = `https://corsproxy.io/?${encodeURIComponent(steamDetailsUrl)}`;
 
-        const detailResponse = await fetch(corsDetailsUrl);
+        const detailResponse = await fetchWithRetry(corsDetailsUrl);
 
         if (!detailResponse.ok) {
             console.error(`[API] Steam details returned status ${detailResponse.status}`);
