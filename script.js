@@ -639,7 +639,7 @@ function restoreFromHistory(itemId) {
     calculateTotal();
     
     showNotification('Calculation restored', 'success');
-}
+
 
 function clearHistory() {
     if (calculationHistory.length === 0) {
