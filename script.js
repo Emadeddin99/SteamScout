@@ -12,7 +12,7 @@ let deals = []; // Initialize deals array to prevent ReferenceError
 let currentDeals = [];
 let dealsLoading = false;
 let currentPage = 1;
-const dealsPerPage = 50;
+const dealsPerPage = 20;
 
 // Cache for deals data
 let dealsCache = {
@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeTaxPresets();
     calculateTotal();
     initializeDealsFilters();
-    // Deals will be loaded lazily when user navigates to deals section
+    loadDeals();
     
     // Update current tax display
     updateTaxDisplay();
@@ -1290,80 +1290,6 @@ function getSteamUrl(deal) {
     return "https://store.steampowered.com";
 }
 
-// FIX 3: Handle expiration date properly
-function normalizeDate(dateInput) {
-    if (!dateInput) return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default 30 days
-    
-    // If it's already a Date object
-    if (dateInput instanceof Date) return dateInput;
-    
-    // If it's a Unix timestamp (seconds or milliseconds)
-    if (typeof dateInput === 'number') {
-        // Timestamps in seconds are typically less than 1e12 (year 33658)
-        // Timestamps in milliseconds are typically greater than 1e11 (1973 onwards for JS era)
-        if (dateInput < 1e11) {
-            // Likely in SECONDS - convert to milliseconds
-            return new Date(dateInput * 1000);
-        } else {
-            // Already in milliseconds
-            return new Date(dateInput);
-        }
-    }
-    
-    // If it's a string, try to parse it
-    if (typeof dateInput === 'string') {
-        const parsed = new Date(dateInput);
-        if (!isNaN(parsed)) return parsed;
-    }
-    
-    // Fallback: 30 days from now
-    return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-}
-
-function getExpiryText(expiry) {
-    if (!expiry || isNaN(expiry)) return "Limited time";
-
-    // Convert Unix seconds → milliseconds if needed
-    let timestamp = expiry;
-    if (typeof timestamp === 'number' && timestamp < 1e12) {
-        timestamp = timestamp * 1000;
-    }
-
-    const now = Date.now();
-    const diff = timestamp - now;
-    const date = new Date(timestamp);
-
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-        return "Limited time";
-    }
-
-    // If already expired
-    if (diff <= 0) return "Expired";
-
-    // Calculate days remaining
-    const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-
-    // Format as "Ends Jan 28, 2026 (in 5 days)"
-    return `Ends ${date.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        year: "numeric"
-    })} (in ${days} day${days !== 1 ? "s" : ""})`;
-}
-
-function calculateDaysUntilExpiry(expiry) {
-    if (!expiry || isNaN(expiry)) return -1;
-    
-    let timestamp = expiry;
-    if (typeof timestamp === 'number' && timestamp < 1e12) {
-        timestamp = timestamp * 1000;
-    }
-    
-    const diff = timestamp - Date.now();
-    return Math.ceil(diff / (1000 * 60 * 60 * 24));
-}
-
 function displayGamePricesLookup(gameName, gameID, gameDetails, pricesData) {
     const resultsList = document.getElementById('dealsList');
     
@@ -2303,21 +2229,8 @@ function quickAddToCalculator(price) {
 
 // Dashboard Navigation - Scroll to Section
 function scrollToSection(sectionId) {
-    // Hide all sections
-    document.querySelectorAll('[data-section]').forEach(section => {
-        section.style.display = 'none';
-    });
-    
-    // Show the target section
     const section = document.getElementById(sectionId);
     if (section) {
-        section.style.display = 'block';
-        
-        // Load deals only when deals section is shown
-        if (sectionId === 'deals' && currentDeals.length === 0 && !dealsLoading) {
-            loadDeals();
-        }
-        
         section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
@@ -2367,4 +2280,53 @@ function dedupeDeals(deals) {
   }
 
   return Array.from(map.values());
+}
+
+// Deal Modal Functions
+function openDealModal(deal) {
+    const modal = document.getElementById('dealModal');
+    const body = document.getElementById('dealModalBody');
+    
+    body.innerHTML = `
+        <div class="deal-card">
+            <div class="deal-header">
+                <h3 class="deal-title">${deal.title}</h3>
+                <div class="deal-badges">
+                    <span class="badge">-${deal.discountPercent}%</span>
+                    ${deal.rating ? `<span class="badge">⭐ ${deal.rating}</span>` : ''}
+                </div>
+            </div>
+            
+            <div class="deal-body">
+                <div class="deal-prices">
+                    <div class="price-item">
+                        <div class="price-label">Current</div>
+                        <div class="price-value">$${deal.price.toFixed(2)}</div>
+                        ${deal.originalPrice > deal.price ? `<div class="original-price">Was $${deal.originalPrice.toFixed(2)}</div>` : ''}
+                    </div>
+                    <div class="price-item">
+                        <div class="price-label">Save</div>
+                        <div class="price-value" style="color: var(--success);">$${(deal.originalPrice - deal.price).toFixed(2)}</div>
+                        <div class="discount-label">${deal.discountPercent}% off</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="deal-footer">
+                <button class="deal-link" onclick="quickAddToCalculator(${deal.price})" title="Add to calculator">
+                    <i class="fas fa-plus"></i> Add to Calculator
+                </button>
+                <a href="${deal.storeUrl}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
+                    <i class="fas fa-external-link-alt"></i> View Deal
+                </a>
+            </div>
+        </div>
+    `;
+    
+    modal.classList.add('active');
+}
+
+function closeDealModal() {
+    const modal = document.getElementById('dealModal');
+    modal.classList.remove('active');
 }

@@ -88,7 +88,7 @@
             </section>
 
             <!-- Calculator Section -->
-            <section id="calculator" class="section calculator-section" data-section="calculator" style="display:block;">
+            <section id="calculator" class="section calculator-section">
                 <div class="section-header">
                     <h2><i class="fas fa-calculator"></i> Price Calculator</h2>
                     <p class="section-subtitle">Add your game prices and calculate total cost with tax</p>
@@ -200,7 +200,7 @@
             </section>
 
             <!-- Deals Section -->
-            <section id="deals" class="section deals-section" data-section="deals" style="display:none;">
+            <section id="deals" class="section deals-section">
                 <div class="section-header">
                     <h2><i class="fas fa-fire"></i> Current Steam Deals</h2>
                     <p class="section-subtitle">Real-time deals from CheapShark API</p>
@@ -238,8 +238,19 @@
                 </div>
             </section>
 
+            <!-- Deal Details Modal -->
+            <div id="dealModal" class="deal-modal">
+                <div class="deal-modal-overlay" onclick="closeDealModal()"></div>
+                <div class="deal-modal-content">
+                    <button class="deal-modal-close" onclick="closeDealModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <div id="dealModalBody"></div>
+                </div>
+            </div>
+
             <!-- History Section -->
-            <section id="history" class="section history-section" data-section="history" style="display:none;">
+            <section id="history" class="section history-section">
                 <div class="section-header">
                     <h2><i class="fas fa-history"></i> Saved Calculations</h2>
                     <p class="section-subtitle">Your calculation history</p>

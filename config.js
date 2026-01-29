@@ -12,10 +12,6 @@ const API_CONFIG = {
     
     // Epic Games Free Games API (CORS-friendly, actually works)
     EPIC_FREEGAMES_URL: 'https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions',
-    
-    // REMOVED: IsThereAnyDeal (requires OAuth - can't be done safely in frontend)
-    // REMOVED: Steam Web API direct deals (no public endpoint exists)
-    // REMOVED: CORS proxy (unreliable, silently fails)
 };
 
 // Direct fetch - no proxy needed for these APIs
@@ -32,17 +28,15 @@ async function directFetch(url, retries = 2) {
             console.warn(`API returned status ${response.status} for URL: ${url}`);
             if (retries > 0 && response.status === 500) {
                 console.log(`Retrying (${retries} retries left)...`);
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 return directFetch(url, retries - 1);
             }
             return null;
         }
         return await response.json();
     } catch (error) {
-        // Check if it's a CORS error (common with Epic API from file:// origin)
         if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
             console.warn('⚠️ CORS blocked or network error:', url);
-            console.warn('Note: Some APIs block file:// origin access. This is expected in local development.');
             return null;
         }
         console.error('Fetch error:', error.message, 'URL:', url);
@@ -53,128 +47,4 @@ async function directFetch(url, retries = 2) {
         }
         return null;
     }
-}
-
-// Legacy Config class for backward compatibility
-class Config {
-    constructor() {
-        this.env = {
-            // RAWG API Configuration (Primary - Game Search & Details)
-            rawgApiUrl: localStorage.getItem('rawgApiUrl') || 'https://api.rawg.io/api',
-            rawgApiKey: localStorage.getItem('rawgApiKey') || API_CONFIG.RAWG_API_KEY,
-            rawgEnabled: true,
-            
-            // Steam Web API Configuration (Direct API with key)
-            steamApiUrl: localStorage.getItem('steamApiUrl') || 'https://store.steampowered.com/api',
-            steamApiKey: localStorage.getItem('steamApiKey') || API_CONFIG.STEAM_API_KEY,
-            steamEnabled: true,
-            
-            // Epic Games API Configuration (Public)
-            epicApiUrl: localStorage.getItem('epicApiUrl') || 'https://store-content-ipv4.epicgames.com/api',
-            epicEnabled: true,
-            
-            // GOG API Configuration (Public)
-            gogApiUrl: localStorage.getItem('gogApiUrl') || 'https://www.gog.com/api',
-            gogEnabled: true,
-            
-            // CheapShark API Configuration (Disabled)
-            cheapsharkApiUrl: localStorage.getItem('cheapsharkApiUrl') || 'https://www.cheapshark.com/api/1.0',
-            cheapsharkEnabled: false,
-            
-            // Application Settings
-            appName: 'Steam Price Calculator',
-            appVersion: '2.3',
-            environment: 'github-pages',
-            deploymentMode: 'static',
-            
-            // Features
-            enableDeals: true,
-            enableHistory: true,
-            enablePrint: true,
-            enableDarkMode: true,
-        };
-    }
-    
-    // Get config value
-    get(key) {
-        return this.env[key];
-    }
-    
-    // Set config value
-    set(key, value) {
-        this.env[key] = value;
-        // Persist to localStorage
-        if (typeof value === 'string') {
-            localStorage.setItem(key, value);
-        }
-    }
-    
-    // Set multiple values
-    setMultiple(values) {
-        Object.keys(values).forEach(key => {
-            this.set(key, values[key]);
-        });
-    }
-    
-    // Get all config
-    getAll() {
-        return { ...this.env };
-    }
-    
-    // Check if feature is enabled
-    isFeatureEnabled(feature) {
-        return this.env[`enable${feature.charAt(0).toUpperCase()}${feature.slice(1)}`] === true;
-    }
-    
-    // Get Steam Web API URL
-    getSteamUrl() {
-        return this.get('steamApiUrl');
-    }
-    
-    // Get Steam headers
-    getSteamHeaders() {
-        return {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        };
-    }
-    
-    // Get GOG API URL
-    getGogUrl() {
-        return this.get('gogApiUrl');
-    }
-    
-    // Get GOG headers
-    getGogHeaders() {
-        return {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        };
-    }
-    
-    // Get RAWG API URL
-    getRawgUrl() {
-        return this.get('rawgApiUrl');
-    }
-    
-    // Get RAWG API Key
-    getRawgApiKey() {
-        return this.get('rawgApiKey');
-    }
-    
-    // Get RAWG headers
-    getRawgHeaders() {
-        return {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        };
-    }
-}
-
-// Create global config instance
-const appConfig = new Config();
-
-// Export for use in modules (if using modules)
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = appConfig;
 }
