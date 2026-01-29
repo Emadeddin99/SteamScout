@@ -1070,17 +1070,18 @@ async function lookupGamePrices(gameName, gameID) {
         try {
             // Call Steam search endpoint to fetch current pricing from Steam
             const steamResponse = await fetch(`/api/steam-search?gameName=${encodeURIComponent(gameName)}`);
+            const steamData = await steamResponse.json();
+            
+            console.log(`[STEAM LOOKUP] Status: ${steamResponse.status}`);
+            console.log(`[STEAM LOOKUP] Response:`, steamData);
             
             if (steamResponse.ok) {
-                const steamData = await steamResponse.json();
-                console.log(`[STEAM LOOKUP] Response:`, steamData);
-                
                 if (steamData.prices && steamData.prices.length > 0) {
                     pricesData = steamData.prices;
                     console.log(`[STEAM LOOKUP] Found prices for ${gameName}`);
                 }
             } else {
-                console.warn(`[STEAM LOOKUP] Steam search returned status ${steamResponse.status}`);
+                console.warn(`[STEAM LOOKUP] Backend error: ${steamData.error}`);
             }
         } catch (e) {
             console.warn('Could not fetch Steam prices:', e);
