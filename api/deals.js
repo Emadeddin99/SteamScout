@@ -20,9 +20,18 @@ export default async function handler(req, res) {
     try {
         console.log('[API] Starting deals fetch...');
         
-        // For now: CheapShark is primary source (ITAD API appears to be unavailable/changed)
-        // TODO: Re-enable ITAD when endpoint is confirmed working
-        let deals = await fetchCheapSharkDeals();
+        // Fetch from both sources
+        console.log('[API] Fetching from both ITAD and CheapShark...');
+        const [itadDeals, cheapsharkDeals] = await Promise.all([
+            fetchIsThereAnyDealDeals(),
+            fetchCheapSharkDeals()
+        ]);
+        
+        console.log(`[API] ITAD: ${itadDeals.length} deals, CheapShark: ${cheapsharkDeals.length} deals`);
+        
+        // Combine deals from both sources
+        let deals = [...itadDeals, ...cheapsharkDeals];
+        console.log(`[API] Combined total: ${deals.length} deals before deduplication`);
 
         // Deduplicate deals by steamAppID, keeping best discount
         deals = deduplicateDeals(deals);
@@ -71,7 +80,7 @@ async function fetchIsThereAnyDealDeals() {
         }
 
         // ITAD v01 endpoint for current deals
-        const url = `https://api.isthereanydeal.com/v01/deals/list/?key=${ITAD_API_KEY}&country=US&shops=steam&limit=200&sort=discount`;
+        const url = `https://api.isthereanydeal.com/v01/deals/list/?key=${ITAD_API_KEY}&country=US&shops=steam&limit=1500&sort=discount`;
         
         const response = await fetch(url, {
             headers: {
