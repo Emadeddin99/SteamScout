@@ -1244,6 +1244,18 @@ a:hover {
     }
 }
 
+/* Ensure single-item states span the grid and are centered */
+.deals-grid > .loading-deals,
+.deals-grid > .empty-state {
+    grid-column: 1 / -1;
+    width: 100%;
+}
+
+/* Also apply to history grid empty state */
+.history-grid > .empty-state {
+    grid-column: 1 / -1;
+    width: 100%;
+}
    
 /* ============================================
    DEAL CARDS
