@@ -945,9 +945,14 @@ a:hover {
 }
 
 .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     padding: 40px 20px;
     color: var(--text-tertiary);
+    min-height: 220px;
 }
 
 .empty-state i {
@@ -965,6 +970,24 @@ a:hover {
     font-size: 0.9rem;
     color: var(--text-tertiary);
     opacity: 0.8;
+}
+
+.loading-deals {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+    min-height: 220px;
+}
+
+.loading-deals .spinner {
+    margin-bottom: 12px;
+}
+
+.loading-deals p {
+    margin: 0;
 }
 
 /* Deals Button Styling */
