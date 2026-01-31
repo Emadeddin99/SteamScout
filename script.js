@@ -1355,23 +1355,13 @@ async function fetchGamePrice(gameName) {
     `;
     
     try {
-        // Try to fetch prices from Steam and GOG only
-        const [steamPrices, gogPrices] = await Promise.all([
-            fetchSteamPrices(gameName),
-            fetchGogPrices(gameName)
-        ]);
-        
-        const allPrices = [
-            ...steamPrices.map(p => ({...p, storeName: 'Steam'})),
-            ...gogPrices.map(p => ({...p, storeName: 'GOG'}))
-        ];
-        
-        if (allPrices.length === 0) {
-            throw new Error('Game not found on any store');
+        // Fetch Steam prices only (server-side search)
+        const steamPrices = await fetchSteamPrices(gameName);
+        if (!steamPrices || steamPrices.length === 0) {
+            throw new Error('Game not found on Steam');
         }
-        
+        const allPrices = steamPrices.map(p => ({ ...p, storeName: 'Steam' }));
         displayGamePricesLookup(gameName, null, null, allPrices);
-        
     } catch (error) {
         console.error('Price fetch error:', error);
         dealsList.innerHTML = `
@@ -1439,11 +1429,22 @@ async function fetchSteamPrices(gameName) {
 }
 */
 
-// Fetch GOG prices - Not available without authentication
-async function fetchGogPrices(gameName) {
-    // GOG API restricted - not available
-    return [];
-}
+// Fetch Steam prices using server-side helper
+async function fetchSteamPrices(gameName) {
+    try {
+        const apiUrl = `/api/steam-search?gameName=${encodeURIComponent(gameName)}`;
+        const response = await fetch(apiUrl);
+        const result = await response.json();
+        if (!response.ok) {
+            console.warn('[STEAM] Backend returned error for:', gameName, result);
+            return [];
+        }
+        return result.prices || [];
+    } catch (err) {
+        console.warn('[STEAM] fetchSteamPrices error:', err.message);
+        return [];
+    }
+} 
 
 // FIX 1: Check for real Steam discount
 function hasRealSteamDiscount(deal) {
@@ -1475,77 +1476,10 @@ function getSteamUrl(deal) {
 
 function displayGamePricesLookup(gameName, gameID, gameDetails, pricesData) {
     const resultsList = document.getElementById('dealsList');
-    
-    // Store configurations
-    const storeConfigs = {
-        'steam': { name: 'Steam', icon: 'fab fa-steam' },
-        'gog': { name: 'GOG', icon: 'fas fa-disc' },
-        'ubisoft': { name: 'Ubisoft+', icon: 'fas fa-play-circle' },
-        'xbox': { name: 'Xbox Game Pass', icon: 'fab fa-xbox' },
-        'humble': { name: 'Humble Bundle', icon: 'fas fa-gift' },
-        'fanatical': { name: 'Fanatical', icon: 'fas fa-star' }
-    };
-    
-    // Group prices by store
-    const storeMap = {};
-    Object.keys(storeConfigs).forEach(key => {
-        storeMap[key] = { ...storeConfigs[key], prices: [] };
-    });
-    
-    if (pricesData && pricesData.length > 0) {
-        pricesData.forEach(shop => {
-            const shopName = (shop.shop && shop.shop.name) ? shop.shop.name.toLowerCase() : '';
-            let storeKey = null;
-            
-            if (shopName.includes('steam')) storeKey = 'steam';
-            else if (shopName.includes('gog')) storeKey = 'gog';
-            else if (shopName.includes('ubisoft')) storeKey = 'ubisoft';
-            else if (shopName.includes('xbox') || shopName.includes('microsoft')) storeKey = 'xbox';
-            else if (shopName.includes('humble')) storeKey = 'humble';
-            else if (shopName.includes('fanatical')) storeKey = 'fanatical';
-            
-            if (storeKey) {
-                // Handle entries with no price data (like Steam API failures)
-                if (shop.noPriceData) {
-                    storeMap[storeKey].prices.push({
-                        price: 0,
-                        originalPrice: 0,
-                        discount: 0,
-                        url: shop.url || '#',
-                        noPriceData: true
-                    });
-                } else if (shop.price !== undefined && shop.regular !== undefined) {
-                    const currentPrice = parseFloat(shop.price);
-                    const normalPrice = parseFloat(shop.regular);
-                    
-                    // Validate prices: must be realistic (less than $300) and reasonable
-                    if (currentPrice >= 0 && normalPrice > 0 && currentPrice <= normalPrice && currentPrice < 300 && normalPrice < 300) {
-                        storeMap[storeKey].prices.push({
-                            price: currentPrice,
-                            originalPrice: normalPrice,
-                            discount: Math.round((1 - currentPrice / normalPrice) * 100),
-                            url: shop.url || '#'
-                        });
-                    }
-                }
-            }
-        });
-    }
-    
-    // Filter stores with prices and sort by best price
-    const storesWithPrices = Object.keys(storeMap)
-        .filter(key => storeMap[key].prices.length > 0)
-        .sort((a, b) => {
-            const priceA = Math.min(...storeMap[a].prices.map(p => p.price));
-            const priceB = Math.min(...storeMap[b].prices.map(p => p.price));
-            return priceA - priceB;
-        });
-    
-    // Generate deal cards
-    let htmlContent = '';
-    
-    if (storesWithPrices.length === 0) {
-        htmlContent = `
+
+    // pricesData is expected to be an array of Steam price objects from /api/steam-search
+    if (!pricesData || pricesData.length === 0) {
+        resultsList.innerHTML = `
             <div class="deal-card">
                 <div class="deal-header">
                     <h3 class="deal-title">${gameName}</h3>
@@ -1562,85 +1496,69 @@ function displayGamePricesLookup(gameName, gameID, gameDetails, pricesData) {
                 </div>
             </div>
         `;
-    } else {
-        storesWithPrices.forEach(storeKey => {
-            const store = storeMap[storeKey];
-            const bestPrice = store.prices.reduce((min, p) => p.price < min.price ? p : min);
-            
-            // Format currency with commas
-            const formatPrice = (price) => {
-                return price.toLocaleString('en-US', {
-                    style: 'currency',
-                    currency: 'USD',
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2
-                });
-            };
-            
-            // Handle no price data case
-            if (bestPrice.noPriceData) {
-                htmlContent += `
-                    <div class="deal-card">
-                        <div class="deal-header">
-                            <h3 class="deal-title">${gameName}</h3>
-                        </div>
-                        <div class="deal-body" style="text-align: center; padding: var(--spacing-lg);">
-                            <p style="margin: 0; color: var(--text-tertiary);">
-                                <i class="fas fa-info-circle"></i> Price data unavailable
-                            </p>
-                        </div>
-                        <div class="deal-footer">
-                            <button class="deal-link" onclick="addGameManual('${gameName}')">
-                                <i class="fas fa-plus"></i> Add to Calculator
-                            </button>
-                            <a href="${bestPrice.url}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
-                                <i class="fas fa-external-link-alt"></i> Visit Steam
-                            </a>
-                        </div>
-                    </div>
-                `;
-            } else {
-                const savings = bestPrice.originalPrice - bestPrice.price;
-                
-                htmlContent += `
-                    <div class="deal-card">
-                        <div class="deal-header">
-                            <h3 class="deal-title">${gameName}</h3>
-                            <div class="deal-badges">
-                                <span class="badge">${bestPrice.discount > 0 ? '-' + bestPrice.discount + '%' : 'Full Price'}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="deal-body">
-                            <div class="deal-prices">
-                                <div class="price-item">
-                                    <div class="price-label">Current Price</div>
-                                    <div class="price-value">${formatPrice(bestPrice.price)}</div>
-                                    ${bestPrice.discount > 0 ? `<div class="discount-label">${bestPrice.discount}% off</div>` : ''}
-                                </div>
-                                <div class="price-item">
-                                    <div class="price-label">Save</div>
-                                    <div class="price-value" style="color: var(--success);">${formatPrice(savings)}</div>
-                                    <div class="discount-label">on steam tody</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="deal-footer">
-                            <button class="deal-link" onclick="addGameWithPrice('${gameName}', ${bestPrice.price})">
-                                <i class="fas fa-plus"></i> Add to Calculator
-                            </button>
-                            <a href="${bestPrice.url}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
-                                <i class="fas fa-external-link-alt"></i> Visit Steam
-                            </a>
-                        </div>
-                    </div>
-                `;
-            }
-        });
+        return;
     }
-    
-    resultsList.innerHTML = htmlContent;
+
+    // Find best (lowest) price among returned Steam prices
+    const validPrices = pricesData.filter(p => !p.noPriceData && typeof p.price === 'number');
+    const best = validPrices.length ? validPrices.reduce((min, p) => p.price < min.price ? p : min) : pricesData[0];
+
+    const formatPrice = (price) => price.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+
+    if (best.noPriceData) {
+        resultsList.innerHTML = `
+            <div class="deal-card">
+                <div class="deal-header">
+                    <h3 class="deal-title">${gameName}</h3>
+                </div>
+                <div class="deal-body" style="text-align: center; padding: var(--spacing-lg);">
+                    <p style="margin: 0; color: var(--text-tertiary);">
+                        <i class="fas fa-info-circle"></i> Price data unavailable
+                    </p>
+                </div>
+                <div class="deal-footer">
+                    <button class="deal-link" onclick="addGameManual('${gameName}')">
+                        <i class="fas fa-plus"></i> Add to Calculator
+                    </button>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    const savings = (best.regular || best.original_price || 0) - best.price;
+
+    resultsList.innerHTML = `
+        <div class="deal-card">
+            <div class="deal-header">
+                <h3 class="deal-title">${gameName}</h3>
+                <div class="deal-badges">
+                    <span class="badge">${best.discount && best.discount > 0 ? '-' + best.discount + '%' : 'Full Price'}</span>
+                </div>
+            </div>
+            <div class="deal-body">
+                <div class="deal-prices">
+                    <div class="price-item">
+                        <div class="price-label">Current Price</div>
+                        <div class="price-value">${formatPrice(best.price)}</div>
+                        ${best.discount && best.discount > 0 ? `<div class="discount-label">${best.discount}% off</div>` : ''}
+                    </div>
+                    <div class="price-item">
+                        <div class="price-label">Save</div>
+                        <div class="price-value" style="color: var(--success);">${formatPrice(savings)}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="deal-footer">
+                <button class="deal-link" onclick="addGameWithPrice('${gameName}', ${best.price})">
+                    <i class="fas fa-plus"></i> Add to Calculator
+                </button>
+                <a href="${best.url}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
+                    <i class="fas fa-external-link-alt"></i> Visit Steam
+                </a>
+            </div>
+        </div>
+    `;
 }
 
 // Add game manually without a deal
@@ -1996,137 +1914,36 @@ async function fetchSteamStoreDeals() {
     }
 }
 
-// Fetch Epic Games free/discounted games
+// fetchEpicGamesDeals removed in Steam-only build (Epic support not included)
 async function fetchEpicGamesDeals() {
-    try {
-        const epicUrl = 'https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions';
-        const response = await corsProxyFetch(epicUrl);
-        
-        if (!response) return [];
-        
-        const data = response;
-        if (!data.data || !Array.isArray(data.data)) return [];
-        
-        const games = data.data;
-        
-        // Filter for discounted games and transform to our format
-        return games.slice(0, 20).map(game => ({
-            id: game.id,
-            title: game.title,
-            price: game.price?.totalPrice?.discountPrice || 0,
-            originalPrice: game.price?.totalPrice?.originalPrice || 29.99,
-            discount: Math.round((1 - (game.price?.totalPrice?.discountPrice || 0) / (game.price?.totalPrice?.originalPrice || 29.99)) * 100),
-            discountPercent: Math.round((1 - (game.price?.totalPrice?.discountPrice || 0) / (game.price?.totalPrice?.originalPrice || 29.99)) * 100),
-            platform: 'epic',
-            rating: 4.5,
-            metacriticScore: 75,
-            thumb: game.keyImages[0]?.url || '',
-            storeUrl: `https://store.epicgames.com/en-US/p/${game.urlSlug}`,
-            dealUrl: `https://store.epicgames.com/en-US/p/${game.urlSlug}`,
-            releaseDate: 2020,
-            expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-            dealRating: 8.0,
-            storeName: 'Epic Games',
-            storeID: '27'
-        }));
-    } catch (error) {
-        console.warn('Epic Games fetch error:', error);
-        return [];
-    }
+    return []; // Stub kept for compatibility
 }
 
-// Fetch GOG discounted games
+// fetchGOGDeals removed in Steam-only build (GOG support not included)
 async function fetchGOGDeals() {
-    try {
-        // GOG API requires authentication - return empty for now
-        // Can be implemented with proper GOG API integration later
-        return [];
-        
-        // Filter for discounted games and transform to our format
-        return data.products.slice(0, 20).map(game => ({
-            id: game.id,
-            title: game.title,
-            price: game.price?.amount || 9.99,
-            originalPrice: game.price?.baseAmount || 19.99,
-            discount: Math.round((1 - (game.price?.amount || 9.99) / (game.price?.baseAmount || 19.99)) * 100),
-            discountPercent: Math.round((1 - (game.price?.amount || 9.99) / (game.price?.baseAmount || 19.99)) * 100),
-            platform: 'gog',
-            rating: 4.5,
-            metacriticScore: 75,
-            thumb: `https:${game.coverHorizontal}`,
-            storeUrl: `https://www.gog.com/en/game/${game.slug}`,
-            dealUrl: `https://www.gog.com/en/game/${game.slug}`,
-            releaseDate: 2020,
-            expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-            dealRating: 8.0,
-            storeName: 'GOG',
-            storeID: '7'
-        }));
-    } catch (error) {
-        console.warn('GOG fetch error:', error);
-        return [];
-    }
+    return []; // Stub kept for compatibility
 }
 
 // Helper to get store name from store ID
 // Get store icon/logo
 function getStoreIcon(storeName) {
-    const icons = {
-        'Steam': '<i class="fab fa-steam"></i>',
-        'Epic Games': '<i class="fas fa-crown" style="color: #563acc;"></i>',
-        'Epic Games (FREE)': '<i class="fas fa-crown" style="color: #563acc;"></i>',
-        'GOG': '<i class="fas fa-store" style="color: #86328f;"></i>',
-        'Amazon': '<i class="fab fa-amazon" style="color: #FF9900;"></i>',
-        'Green Man Gaming': '<i class="fas fa-leaf" style="color: #00B300;"></i>',
-        'Ubisoft': '<i class="fas fa-store" style="color: #000;"></i>',
-        'PlayStation': '<i class="fab fa-playstation" style="color: #003087;"></i>',
-        'Xbox': '<i class="fab fa-xbox" style="color: #107C10;"></i>',
-        'steam': '<i class="fab fa-steam"></i>',
-        'epic': '<i class="fas fa-crown" style="color: #563acc;"></i>'
-    };
-    return icons[storeName] || '<i class="fas fa-shopping-cart"></i>';
+    // Only Steam icon is used in this simplified build
+    if (storeName && storeName.toLowerCase().includes('steam')) {
+        return '<i class="fab fa-steam"></i>';
+    }
+    return '<i class="fas fa-shopping-cart"></i>';
 }
 
 function getStoreName(storeID) {
+    // Only Steam is supported in this trimmed build
     const stores = {
-        '1': 'Steam',
-        '2': 'Amazon',
-        '3': 'Green Man Gaming',
-        '4': 'GamersGate',
-        '5': 'WinGameStore',
-        '6': 'Fanatical',
-        '7': 'GOG',
-        '8': 'Voidu',
-        '9': 'IndieGameStand',
-        '10': 'Humble Bundle',
-        '11': 'AllKeyShop',
-        '12': 'MMOGA',
-        '13': 'GameBillet',
-        '14': 'IndieGala',
-        '15': 'Gamesrocket',
-        '16': 'Gamesplanet',
-        '17': 'Nuuvem',
-        '18': 'DreamGame',
-        '19': 'TwitchPrime',
-        '20': 'MacGameStore',
-        '21': 'SteamRIP',
-        '22': 'Kinguin',
-        '23': 'Eneba',
-        '24': 'Eneba',
-        '25': 'Oculus',
-        '26': 'Nintendo',
-        '27': 'Epic Games',
-        '28': 'Ubisoft',
-        '29': 'PlayStation',
-        '30': 'Xbox',
-        '31': 'Direct2Drive',
-        '32': 'GOG Galaxy'
+        '1': 'Steam'
     };
     // Convert to string in case it comes as a number
     const storeKey = String(storeID);
     return stores[storeKey] || 'Store';
-}
 
+}
 // Calculate expiration date (simulated - typically 30 days from deal creation)
 function calculateExpirationDate(dealID) {
     const now = new Date();
@@ -2286,8 +2103,7 @@ function filterDeals(platform) {
     const allDeals = document.querySelectorAll('.deal-item');
     
     const storeIDMap = {
-        'steam': '1',
-        'epic': '27'
+        'steam': '1'
     };
     
     const storeID = storeIDMap[platform];
