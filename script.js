@@ -601,8 +601,14 @@ function restoreFromHistory(itemId) {
             });
         }
         
-        // Restore tax rate
-        document.getElementById('taxRateSlider').value = cachedData.taxRate / 100;
+        // Restore tax rate and input (taxRate saved as percent)
+        const restoredTax = cachedData.taxRate;
+        document.getElementById('taxRateSlider').value = restoredTax;
+        document.getElementById('taxRateInput').value = restoredTax;
+        // Update preset active state
+        document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.querySelector(`.tax-preset[data-tax="${restoredTax}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
         updateTaxDisplay();
     } else {
         // Fallback to history item data if cache is expired
@@ -618,7 +624,12 @@ function restoreFromHistory(itemId) {
             });
         }
         
-        document.getElementById('taxRateSlider').value = item.taxRate / 100;
+        const restoredTax = item.taxRate;
+        document.getElementById('taxRateSlider').value = restoredTax;
+        document.getElementById('taxRateInput').value = restoredTax;
+        document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.querySelector(`.tax-preset[data-tax="${restoredTax}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
         updateTaxDisplay();
         
         if (!cachedData) {
