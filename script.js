@@ -1748,8 +1748,12 @@ async function loadDeals(forceRefresh = false) {
     
     dealsLoading = true;
     const dealsList = document.getElementById('dealsList');
-    // Render skeleton placeholders sized like real deal cards to avoid layout shifts
-    dealsList.innerHTML = renderDealSkeletons(dealsPerPage);
+    dealsList.innerHTML = `
+        <div class="loading-deals">
+            <div class="spinner"></div>
+            <p>Loading current deals...</p>
+        </div>
+    `;
     
     try {
         // Check cache first
@@ -2133,29 +2137,6 @@ function calculateExpirationDate(dealID) {
 // Sample data as fallback
 async function loadSampleDeals() {
     return [];
-}
-
-// Helper: render skeleton HTML for a given count
-function renderDealSkeletons(count) {
-    const skeletons = Array.from({length: count}).map(() => {
-        return `
-            <div class="deal-skeleton">
-                <div class="skeleton-header">
-                    <div class="skeleton-line medium"></div>
-                </div>
-                <div class="skeleton-body">
-                    <div class="skeleton-line long"></div>
-                    <div class="skeleton-line short"></div>
-                </div>
-                <div class="skeleton-footer">
-                    <div class="skeleton-line medium"></div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    // Wrap in a grid container so replacing skeletons with real cards keeps layout
-    return `<div class="skeleton-grid">${skeletons}</div>`;
 }
 
 // Display deals in the list
