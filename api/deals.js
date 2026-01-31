@@ -32,6 +32,15 @@ export default async function handler(req, res) {
         // Combine deals from both sources
         let deals = [...itadDeals, ...cheapsharkDeals];
         console.log(`[API] Combined total: ${deals.length} deals before deduplication`);
+        
+        // Debug mode: include source counts and small samples when ?debug=1
+        const debugMode = req.query && (req.query.debug === '1' || req.query.debug === 'true');
+        const debugInfo = {
+            itadCount: Array.isArray(itadDeals) ? itadDeals.length : 0,
+            cheapsharkCount: Array.isArray(cheapsharkDeals) ? cheapsharkDeals.length : 0,
+            itadSample: (Array.isArray(itadDeals) ? itadDeals.slice(0,3) : []),
+            cheapsharkSample: (Array.isArray(cheapsharkDeals) ? cheapsharkDeals.slice(0,3) : [])
+        };
 
         // Deduplicate deals by steamAppID, keeping best discount
         deals = deduplicateDeals(deals);
@@ -46,12 +55,18 @@ export default async function handler(req, res) {
 
         console.log(`[API] ✅ Returning ${deals.length} deals`);
 
-        res.status(200).json({
+        const responsePayload = {
             success: true,
             count: deals.length,
             deals,
             timestamp: new Date().toISOString()
-        });
+        };
+
+        if (debugMode) {
+            responsePayload.debug = debugInfo;
+        }
+
+        res.status(200).json(responsePayload);
 
     } catch (error) {
         console.error('[API] Fatal error:', error);
