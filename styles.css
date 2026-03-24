@@ -1283,11 +1283,12 @@ a:hover {
     justify-content: center;
     align-items: center;
     gap: var(--spacing-md);
-    margin-top: var(--spacing-xl);
+    margin: var(--spacing-xl) 0;
     padding: var(--spacing-lg);
     background: var(--bg-card);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-color);
+    width: 100%;
 }
 
 .pagination-btn {
