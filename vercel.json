@@ -16,10 +16,6 @@
         {
           "key": "Content-Type",
           "value": "application/json"
-        },
-        {
-          "key": "Content-Encoding",
-          "value": "identity"
         }
       ]
     },
