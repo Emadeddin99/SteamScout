@@ -74,6 +74,7 @@ function initializePerformanceOptimizations() {
     // Register service worker for caching
     registerServiceWorker();
 
+    markPerformance('perf-init-end');
     measurePerformance('performance-init', 'perf-init-start', 'perf-init-end');
 }
 

@@ -48,25 +48,9 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
-    // Handle API requests with network-first strategy
+    // Handle API requests - network only (don't cache to avoid issues)
     if (url.pathname.startsWith('/api/')) {
-        event.respondWith(
-            caches.open(API_CACHE).then(cache => {
-                return fetch(event.request)
-                    .then(response => {
-                        // Cache successful API responses for 5 minutes
-                        if (response.status === 200) {
-                            cache.put(event.request, response.clone());
-                        }
-                        return response;
-                    })
-                    .catch(() => {
-                        // Return cached version if network fails
-                        return cache.match(event.request);
-                    });
-            })
-        );
-        return;
+        return; // Let the browser handle API requests normally
     }
 
     // Handle static files with cache-first strategy
