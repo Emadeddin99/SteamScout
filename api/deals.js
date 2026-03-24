@@ -41,15 +41,9 @@ export default async function handler(req, res) {
         const limit = parseInt(req.query.limit) || 50;
         const offset = (page - 1) * limit;
 
-        // Check cache first
-        const now = Date.now();
-        let deals = null;
-
-        if (dealsCache.data && (now - dealsCache.timestamp) < dealsCache.ttl) {
-            console.log('[API] ✅ Using cached deals data');
-            deals = dealsCache.data;
-        } else {
-            console.log('[API] Cache miss - fetching fresh data...');
+        // For serverless environment, fetch fresh data each time
+        // Don't use cache for pagination to ensure data consistency
+        console.log('[API] Fetching fresh data for page', page);
 
 // Fetch from both sources with timeout
         console.log('[API] Fetching from both ITAD and CheapShark...');
@@ -87,7 +81,7 @@ export default async function handler(req, res) {
             // Sort by discount descending
             deals = deals.sort((a, b) => b.discount - a.discount);
 
-            // Cache the processed data
+            // Cache the processed data (only for this request)
             dealsCache = {
                 data: deals,
                 timestamp: now,
@@ -95,7 +89,6 @@ export default async function handler(req, res) {
             };
 
             console.log(`[API] ✅ Cached ${deals.length} processed deals`);
-        }
 
         // Debug mode: include cache info when ?debug=1
         const debugMode = req.query && (req.query.debug === '1' || req.query.debug === 'true');
@@ -106,7 +99,10 @@ export default async function handler(req, res) {
         } : null;
 
         // Get total count before pagination
-        const totalCount = deals.length;
+        // Limit total pages to prevent excessive API calls
+        const maxPages = 10; // Maximum 10 pages to prevent API abuse
+        const maxTotalDeals = maxPages * limit;
+        const totalCount = Math.min(deals.length, maxTotalDeals);
 
         // Apply pagination
         const paginatedDeals = deals.slice(offset, offset + limit);
