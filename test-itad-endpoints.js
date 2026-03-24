@@ -1,6 +1,5 @@
-// Test ITAD for expiration data
-
-const ITAD_API_KEY = '84bfb1b622a0e38eee27b2f8c4c9e7e350fd2a93';
+// REMOVED: ITAD endpoint tests (Steam-only build)
+console.log('test-itad-endpoints.js removed');
 
 async function testITAD() {
   try {

@@ -10,12 +10,9 @@ const API_CONFIG = {
     CHEAPSHARK_API_BASE: 'https://www.cheapshark.com/api/1.0',
     CHEAPSHARK_DEALS_URL: 'https://www.cheapshark.com/api/1.0/deals',
     
-    // Epic Games Free Games API (CORS-friendly, actually works)
-    EPIC_FREEGAMES_URL: 'https://store-site-backend-static.ak.epicgames.com/freeGamesPromotions',
-    
-    // REMOVED: IsThereAnyDeal (requires OAuth - can't be done safely in frontend)
-    // REMOVED: Steam Web API direct deals (no public endpoint exists)
-    // REMOVED: CORS proxy (unreliable, silently fails)
+    // REMOVED: Epic/GOG public endpoints (we're focusing on Steam only)
+    // REMOVED: IsThereAnyDeal (requires OAuth - use server-side ITAD integration if needed)
+    // REMOVED: CORS proxy (unreliable, silently fails) 
 };
 
 // Direct fetch - no proxy needed for these APIs
@@ -69,17 +66,9 @@ class Config {
             steamApiKey: localStorage.getItem('steamApiKey') || API_CONFIG.STEAM_API_KEY,
             steamEnabled: true,
             
-            // Epic Games API Configuration (Public)
-            epicApiUrl: localStorage.getItem('epicApiUrl') || 'https://store-content-ipv4.epicgames.com/api',
-            epicEnabled: true,
-            
-            // GOG API Configuration (Public)
-            gogApiUrl: localStorage.getItem('gogApiUrl') || 'https://www.gog.com/api',
-            gogEnabled: true,
-            
-            // CheapShark API Configuration (Disabled)
+            // CheapShark API Configuration (used for Steam deals)
             cheapsharkApiUrl: localStorage.getItem('cheapsharkApiUrl') || 'https://www.cheapshark.com/api/1.0',
-            cheapsharkEnabled: false,
+            cheapsharkEnabled: true,
             
             // Application Settings
             appName: 'Steam Price Calculator',
@@ -139,18 +128,7 @@ class Config {
         };
     }
     
-    // Get GOG API URL
-    getGogUrl() {
-        return this.get('gogApiUrl');
-    }
-    
-    // Get GOG headers
-    getGogHeaders() {
-        return {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        };
-    }
+
     
     // Get RAWG API URL
     getRawgUrl() {

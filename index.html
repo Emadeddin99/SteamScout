@@ -126,8 +126,8 @@
                             </div>
                             <div class="tax-presets">
                                 <button class="preset-btn" data-tax="5">5%</button>
-                                <button class="preset-btn" data-tax="8">8%</button>
-                                <button class="preset-btn active" data-tax="10">10%</button>
+                                <button class="preset-btn active" data-tax="8">8%</button>
+                                <button class="preset-btn" data-tax="10">10%</button>
                                 <button class="preset-btn" data-tax="15">15%</button>
                                 <button class="preset-btn" data-tax="20">20%</button>
                             </div>
@@ -235,6 +235,16 @@
                         <div class="spinner"></div>
                         <p>Loading deals...</p>
                     </div>
+                </div>
+
+                <div id="paginationControls" class="pagination-controls" style="display: none;">
+                    <button id="prevPageBtn" class="pagination-btn" onclick="changePage(currentPage - 1)" disabled>
+                        <i class="fas fa-chevron-left"></i> Previous
+                    </button>
+                    <span id="pageInfo" class="page-info">Page 1</span>
+                    <button id="nextPageBtn" class="pagination-btn" onclick="changePage(currentPage + 1)">
+                        Next <i class="fas fa-chevron-right"></i>
+                    </button>
                 </div>
             </section>
 
