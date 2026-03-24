@@ -1909,12 +1909,9 @@ function updatePaginationControls() {
     prevBtn.disabled = currentPage <= 1;
     nextBtn.disabled = currentPage >= totalPages;
 
-    // Scroll to deals section when page changes
+    // Scroll to top of page when page changes
     setTimeout(() => {
-        const dealsList = document.getElementById('dealsList');
-        if (dealsList) {
-            dealsList.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 200);
 }
 
