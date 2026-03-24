@@ -2055,47 +2055,7 @@ function displayDeals(deals, resetPage = true) {
         `;
     }).join('');
     
-    // Create pagination controls
-    let paginationHTML = '';
-    if (totalPages > 1) {
-        paginationHTML = `
-            <div class="pagination">
-                <div class="pagination-info">
-                    Page <span class="current-page">${currentPage}</span> out of <span class="total-pages">${totalPages}</span>
-                </div>
-                <div class="pagination-controls">
-                    ${currentPage > 1 ? `<button class="pagination-btn" onclick="goToPage(${currentPage - 1})"><i class="fas fa-chevron-left"></i> Prev</button>` : ''}
-        `;
-        
-        // Show page numbers
-        const maxPagesToShow = 5;
-        const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-        const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-        
-        for (let i = startPage; i <= endPage; i++) {
-            if (i === currentPage) {
-                paginationHTML += `<button class="pagination-btn active">${i}</button>`;
-            } else {
-                paginationHTML += `<button class="pagination-btn" onclick="goToPage(${i})">${i}</button>`;
-            }
-        }
-        
-        paginationHTML += `
-                    ${currentPage < totalPages ? `<button class="pagination-btn" onclick="goToPage(${currentPage + 1})">Next <i class="fas fa-chevron-right"></i></button>` : ''}
-                </div>
-            </div>
-        `;
-    }
-    
-    dealsList.innerHTML = dealsHTML + paginationHTML;
-}
-
-// Navigate to a specific page
-function goToPage(page) {
-    currentPage = page;
-    displayDeals(displayedDeals, false);
-    // Scroll to deals section
-    document.getElementById('dealsList').scrollIntoView({ behavior: 'smooth' });
+    dealsList.innerHTML = dealsHTML;
 }
 
 // Sort deals based on selected option
