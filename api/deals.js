@@ -355,21 +355,11 @@ async function fetchCheapSharkDeals() {
 
             console.log(`[API] CheapShark normalized: ${normalized.length} valid deals`);
 
-            // If nothing was fetched from CheapShark, fall back to local sample file
+            // If nothing was fetched from CheapShark, return empty array
+            // Client-side code will handle fallback to sample data
             if (normalized.length === 0) {
-                try {
-                    console.warn('[API] CheapShark returned no deals; attempting to load local sample fallback');
-                    const fs = require('fs');
-                    const path = require('path');
-                    const samplePath = path.resolve(__dirname, '../assets/sample-deals.json');
-                    const sampleRaw = fs.readFileSync(samplePath, 'utf-8');
-                    const sample = JSON.parse(sampleRaw);
-                    console.log(`[API] Loaded ${sample.length} deals from local sample fallback`);
-                    return sample;
-                } catch (err) {
-                    console.error('[API] Failed to load local sample fallback:', err.message);
-                    return [];
-                }
+                console.warn('[API] CheapShark returned no deals; returning empty array');
+                return [];
             }
 
             return normalized;
