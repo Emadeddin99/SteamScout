@@ -1909,10 +1909,13 @@ function updatePaginationControls() {
     prevBtn.disabled = currentPage <= 1;
     nextBtn.disabled = currentPage >= totalPages;
 
-    // Scroll to top of page when page changes
+    // Scroll to deals section when page changes
     setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 200);
+        const dealsList = document.getElementById('dealsList');
+        if (dealsList) {
+            dealsList.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }, 500);
 }
 
 // Fetch real deals from Steam, Epic Games using serverless API (CORS-safe)
