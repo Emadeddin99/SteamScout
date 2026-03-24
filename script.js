@@ -1888,11 +1888,13 @@ function changePage(newPage) {
     currentPage = newPage;
     loadDeals();
 
-    // Scroll to top of deals section
-    const dealsList = document.getElementById('dealsList');
-    if (dealsList) {
-        dealsList.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    // Scroll to top of deals section (pagination controls) after a brief delay
+    setTimeout(() => {
+        const paginationControls = document.getElementById('paginationControls');
+        if (paginationControls) {
+            paginationControls.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, 100);
 }
 
 // Update pagination controls visibility and state
