@@ -1,7 +1,25 @@
 /* ============================================
    STEAMSCOUT - MODERN RESPONSIVE REDESIGN
-   Flexible Layout for Desktop & Mobile
+   Optimized for Performance
    ============================================ */
+
+/* Performance optimizations */
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+/* Optimize font loading */
+@font-face {
+    font-family: 'Font Awesome 6 Free';
+    font-style: normal;
+    font-weight: 900;
+    font-display: swap;
+    src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2") format("woff2");
+}
 
 /* ============================================
    COLOR THEMES & VARIABLES
@@ -17,25 +35,25 @@
     --success: #10b981;
     --danger: #ef4444;
     --warning: #f97316;
-    
+
     /* Backgrounds */
     --bg-primary: #0a0e27;
     --bg-secondary: #141829;
     --bg-tertiary: #1f2937;
     --bg-card: #1a1f3a;
     --bg-hover: #2d3748;
-    
+
     /* Text */
     --text-primary: #f0f9ff;
     --text-secondary: #cbd5e1;
     --text-tertiary: #94a3b8;
-    
+
     /* Borders & Shadows */
     --border-color: #2d3748;
     --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 8px 16px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 16px 32px rgba(0, 212, 255, 0.1);
-    
+
     /* Spacing */
     --spacing-xs: 4px;
     --spacing-sm: 8px;
@@ -43,7 +61,7 @@
     --spacing-lg: 24px;
     --spacing-xl: 32px;
     --spacing-2xl: 48px;
-    
+
     /* Border Radius */
     --radius-sm: 6px;
     --radius-md: 12px;
@@ -1305,22 +1323,27 @@ a:hover {
 }
    
 /* ============================================
-   DEAL CARDS
+   DEAL CARDS - Optimized for Performance
    ============================================ */
 .deal-card {
     background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-tertiary) 100%);
     border: 2px solid var(--border-color);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    transition: all var(--transition);
     display: flex;
     flex-direction: column;
     height: 100%;
-    animation: fadeInUp 0.5s ease-out;
+    /* Performance optimizations */
+    will-change: transform, box-shadow;
+    transform: translateZ(0); /* Force hardware acceleration */
+    backface-visibility: hidden;
+    animation: fadeInUp 0.3s ease-out;
+    /* Optimize transitions */
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .deal-card:hover {
-    transform: translateY(-8px);
+    transform: translateY(-8px) translateZ(0);
     border-color: var(--accent);
     box-shadow: 0 16px 32px rgba(0, 212, 255, 0.2);
 }

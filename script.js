@@ -1,4 +1,4 @@
-// script.js - Fixed version with all issues resolved
+// script.js - Optimized version with performance improvements
 // API Configuration is loaded from config.js
 // corsProxyFetch helper is also loaded from config.js
 
@@ -31,15 +31,123 @@ let currentGameSuggestions = []; // Store current suggestions for Enter key disp
 let currentPage = 1;
 const dealsPerPage = 50;
 
+// Performance monitoring
+let performanceMarks = {};
 
+function markPerformance(name) {
+    if ('performance' in window && performance.mark) {
+        performance.mark(name);
+        performanceMarks[name] = performance.now();
+    }
+}
+
+function measurePerformance(name, startMark, endMark) {
+    if ('performance' in window && performance.measure) {
+        try {
+            performance.measure(name, startMark, endMark);
+            const measure = performance.getEntriesByName(name)[0];
+            console.log(`🚀 ${name}: ${measure.duration.toFixed(2)}ms`);
+            return measure.duration;
+        } catch (e) {
+            console.warn('Performance measurement failed:', e);
+        }
+    }
+    return null;
+}
+
+// Initialize performance monitoring
+markPerformance('app-start');
+
+// Performance optimization: Intersection Observer for lazy loading
+let imageObserver = null;
+
+// Initialize performance optimizations
+function initializePerformanceOptimizations() {
+    markPerformance('perf-init-start');
+
+    // Preload critical resources
+    preloadCriticalResources();
+
+    // Initialize lazy loading
+    initializeLazyLoading();
+
+    // Register service worker for caching
+    registerServiceWorker();
+
+    measurePerformance('performance-init', 'perf-init-start', 'perf-init-end');
+}
+
+function preloadCriticalResources() {
+    // Preload critical CSS and fonts
+    const criticalResources = [
+        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+    ];
+
+    criticalResources.forEach(url => {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.href = url;
+        link.as = 'style';
+        document.head.appendChild(link);
+    });
+}
+
+function initializeLazyLoading() {
+    if ('IntersectionObserver' in window) {
+        imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    if (img.dataset.src) {
+                        img.src = img.dataset.src;
+                        img.classList.remove('lazy');
+                        observer.unobserve(img);
+                    }
+                }
+            });
+        }, {
+            rootMargin: '50px 0px',
+            threshold: 0.01
+        });
+    }
+}
+
+function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(registration => {
+                    console.log('ServiceWorker registered successfully');
+                })
+                .catch(error => {
+                    console.log('ServiceWorker registration failed:', error);
+                });
+        });
+    }
+}
+
+// Lazy load images
+function lazyLoadImage(img) {
+    if (imageObserver) {
+        imageObserver.observe(img);
+    } else {
+        // Fallback for browsers without IntersectionObserver
+        if (img.dataset.src) {
+            img.src = img.dataset.src;
+        }
+    }
+}
 
 // Initialize the calculator
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize performance optimizations first
+    initializePerformanceOptimizations();
+
     // Apply dark mode if enabled
     if (darkMode) {
         document.body.classList.add('dark-mode');
     }
-    
+
     updateGameFields();
     loadHistory();
     setupEventListeners();
@@ -1664,8 +1772,10 @@ function clearGameSearch() {
 
 // Load deals with real API
 async function loadDeals(forceRefresh = false) {
+    markPerformance('deals-load-start');
+
     if (dealsLoading) return;
-    
+
     dealsLoading = true;
     const dealsList = document.getElementById('dealsList');
     dealsList.innerHTML = `
@@ -1674,7 +1784,7 @@ async function loadDeals(forceRefresh = false) {
             <p>Loading current deals...</p>
         </div>
     `;
-    
+
     try {
         // Check cache first
         const now = Date.now();
@@ -1741,9 +1851,12 @@ async function loadDeals(forceRefresh = false) {
         
         sortDeals(document.getElementById('dealsSort').value);
         updatePaginationControls();
-        
+
         showNotification(`Loaded ${deals.length} deals (page ${currentPage})!`, "success");
-        
+
+        markPerformance('deals-load-end');
+        measurePerformance('deals-loading-time', 'deals-load-start', 'deals-load-end');
+
     } catch (error) {
         console.error('Error loading deals:', error);
         dealsList.innerHTML = `

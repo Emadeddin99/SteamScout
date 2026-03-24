@@ -4,12 +4,22 @@
  * Returns normalized deal objects with consistent shape
  */
 
+// Global cache for processed deals data
+let dealsCache = {
+    data: null,
+    timestamp: 0,
+    ttl: 15 * 60 * 1000 // 15 minutes cache
+};
+
 export default async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
     res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
+
+    // Enable compression
+    res.setHeader('Content-Encoding', 'gzip');
 
     // Handle preflight
     if (req.method === 'OPTIONS') {
@@ -19,62 +29,81 @@ export default async function handler(req, res) {
 
     try {
         console.log('[API] Starting deals fetch...');
-        
+
         // Parse pagination parameters
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 50;
         const offset = (page - 1) * limit;
-        
-        // Fetch from both sources
-        console.log('[API] Fetching from both ITAD and CheapShark...');
-        const [itadDeals, cheapsharkDeals] = await Promise.all([
-            fetchIsThereAnyDealDeals(),
-            fetchCheapSharkDeals()
-        ]);
-        
-        console.log(`[API] ITAD: ${itadDeals.length} deals, CheapShark: ${cheapsharkDeals.length} deals`);
-        
-        // Combine deals from both sources
-        let deals = [...itadDeals, ...cheapsharkDeals];
-        console.log(`[API] Combined total: ${deals.length} deals before deduplication`);
-        
-        // Debug mode: include source counts and small samples when ?debug=1
-        const debugMode = req.query && (req.query.debug === '1' || req.query.debug === 'true');
-        const debugInfo = {
-            itadCount: Array.isArray(itadDeals) ? itadDeals.length : 0,
-            cheapsharkCount: Array.isArray(cheapsharkDeals) ? cheapsharkDeals.length : 0,
-            itadSample: (Array.isArray(itadDeals) ? itadDeals.slice(0,3) : []),
-            cheapsharkSample: (Array.isArray(cheapsharkDeals) ? cheapsharkDeals.slice(0,3) : [])
-        };
 
-        // Deduplicate deals by steamAppID, keeping best discount
-        deals = deduplicateDeals(deals);
-        
-        // Filter invalid deals
-        deals = filterValidDeals(deals);
-        
-        // Sort by discount descending
-        deals = deals.sort((a, b) => b.discount - a.discount);
-        
+        // Check cache first
+        const now = Date.now();
+        let deals = null;
+
+        if (dealsCache.data && (now - dealsCache.timestamp) < dealsCache.ttl) {
+            console.log('[API] ✅ Using cached deals data');
+            deals = dealsCache.data;
+        } else {
+            console.log('[API] Cache miss - fetching fresh data...');
+
+            // Fetch from both sources
+            console.log('[API] Fetching from both ITAD and CheapShark...');
+            const [itadDeals, cheapsharkDeals] = await Promise.all([
+                fetchIsThereAnyDealDeals(),
+                fetchCheapSharkDeals()
+            ]);
+
+            console.log(`[API] ITAD: ${itadDeals.length} deals, CheapShark: ${cheapsharkDeals.length} deals`);
+
+            // Combine deals from both sources
+            deals = [...itadDeals, ...cheapsharkDeals];
+            console.log(`[API] Combined total: ${deals.length} deals before deduplication`);
+
+            // Deduplicate deals by steamAppID, keeping best discount
+            deals = deduplicateDeals(deals);
+
+            // Filter invalid deals
+            deals = filterValidDeals(deals);
+
+            // Sort by discount descending
+            deals = deals.sort((a, b) => b.discount - a.discount);
+
+            // Cache the processed data
+            dealsCache = {
+                data: deals,
+                timestamp: now,
+                ttl: 15 * 60 * 1000 // 15 minutes
+            };
+
+            console.log(`[API] ✅ Cached ${deals.length} processed deals`);
+        }
+
+        // Debug mode: include cache info when ?debug=1
+        const debugMode = req.query && (req.query.debug === '1' || req.query.debug === 'true');
+        const debugInfo = debugMode ? {
+            totalCached: dealsCache.data ? dealsCache.data.length : 0,
+            cacheAge: dealsCache.timestamp ? Math.round((now - dealsCache.timestamp) / 1000) + 's' : 'none',
+            usingCache: dealsCache.data && (now - dealsCache.timestamp) < dealsCache.ttl
+        } : null;
+
         // Get total count before pagination
         const totalCount = deals.length;
-        
-        // Apply pagination
-        deals = deals.slice(offset, offset + limit);
 
-        console.log(`[API] ✅ Returning ${deals.length} deals (page ${page}, limit ${limit}, total ${totalCount})`);
+        // Apply pagination
+        const paginatedDeals = deals.slice(offset, offset + limit);
+
+        console.log(`[API] ✅ Returning ${paginatedDeals.length} deals (page ${page}, limit ${limit}, total ${totalCount})`);
 
         const responsePayload = {
             success: true,
-            count: deals.length,
+            count: paginatedDeals.length,
             totalCount,
             page,
             limit,
-            deals,
+            deals: paginatedDeals,
             timestamp: new Date().toISOString()
         };
 
-        if (debugMode) {
+        if (debugMode && debugInfo) {
             responsePayload.debug = debugInfo;
         }
 
