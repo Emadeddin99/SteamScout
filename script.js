@@ -1,4 +1,4 @@
-// script.js - Optimized version with performance improvements
+// script.js - Fixed version with all issues resolved
 // API Configuration is loaded from config.js
 // corsProxyFetch helper is also loaded from config.js
 
@@ -12,14 +12,12 @@ let deals = []; // Initialize deals array to prevent ReferenceError
 let currentDeals = [];
 let displayedDeals = []; // Track currently displayed deals (for pagination)
 let dealsLoading = false;
-let totalDealsCount = 0;
 
-// Cache for deals data - now per page
+// Cache for deals data
 let dealsCache = {
     data: [],
     timestamp: 0,
-    ttl: 3600000, // 1 hour cache
-    page: 0
+    ttl: 3600000 // 1 hour cache
 };
 
 // Search cache
@@ -29,135 +27,17 @@ let currentGameSuggestions = []; // Store current suggestions for Enter key disp
 
 // Pagination
 let currentPage = 1;
-const dealsPerPage = 52;
+const dealsPerPage = 12;
 
-// Performance monitoring
-let performanceMarks = {};
 
-function markPerformance(name) {
-    if ('performance' in window && performance.mark) {
-        performance.mark(name);
-        performanceMarks[name] = performance.now();
-    }
-}
-
-function measurePerformance(name, startMark, endMark) {
-    if ('performance' in window && performance.measure && performance.getEntriesByName) {
-        try {
-            // Check if marks exist before measuring
-            const startEntry = performance.getEntriesByName(startMark)[0];
-            const endEntry = performance.getEntriesByName(endMark)[0];
-            
-            if (!startEntry || !endEntry) {
-                console.warn(`Performance marks not found: ${startMark}, ${endMark}`);
-                return null;
-            }
-            
-            performance.measure(name, startMark, endMark);
-            const measure = performance.getEntriesByName(name)[0];
-            console.log(`🚀 ${name}: ${measure.duration.toFixed(2)}ms`);
-            return measure.duration;
-        } catch (e) {
-            console.warn('Performance measurement failed:', e);
-        }
-    }
-    return null;
-}
-
-// Initialize performance monitoring
-markPerformance('app-start');
-
-// Performance optimization: Intersection Observer for lazy loading
-let imageObserver = null;
-
-// Initialize performance optimizations
-function initializePerformanceOptimizations() {
-    markPerformance('perf-init-start');
-
-    // Preload critical resources
-    preloadCriticalResources();
-
-    // Initialize lazy loading
-    initializeLazyLoading();
-
-    // Register service worker for caching
-    registerServiceWorker();
-
-    markPerformance('perf-init-end');
-    measurePerformance('performance-init', 'perf-init-start', 'perf-init-end');
-}
-
-function preloadCriticalResources() {
-    // Preload critical CSS and fonts
-    const criticalResources = [
-        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
-    ];
-
-    criticalResources.forEach(url => {
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.href = url;
-        link.as = 'style';
-        document.head.appendChild(link);
-    });
-}
-
-function initializeLazyLoading() {
-    if ('IntersectionObserver' in window) {
-        imageObserver = new IntersectionObserver((entries, observer) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const img = entry.target;
-                    if (img.dataset.src) {
-                        img.src = img.dataset.src;
-                        img.classList.remove('lazy');
-                        observer.unobserve(img);
-                    }
-                }
-            });
-        }, {
-            rootMargin: '50px 0px',
-            threshold: 0.01
-        });
-    }
-}
-
-function registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js')
-                .then(registration => {
-                    console.log('ServiceWorker registered successfully');
-                })
-                .catch(error => {
-                    console.log('ServiceWorker registration failed:', error);
-                });
-        });
-    }
-}
-
-// Lazy load images
-function lazyLoadImage(img) {
-    if (imageObserver) {
-        imageObserver.observe(img);
-    } else {
-        // Fallback for browsers without IntersectionObserver
-        if (img.dataset.src) {
-            img.src = img.dataset.src;
-        }
-    }
-}
 
 // Initialize the calculator
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize performance optimizations first
-    initializePerformanceOptimizations();
-
     // Apply dark mode if enabled
     if (darkMode) {
         document.body.classList.add('dark-mode');
     }
-
+    
     updateGameFields();
     loadHistory();
     setupEventListeners();
@@ -1782,10 +1662,8 @@ function clearGameSearch() {
 
 // Load deals with real API
 async function loadDeals(forceRefresh = false) {
-    markPerformance('deals-load-start');
-
     if (dealsLoading) return;
-
+    
     dealsLoading = true;
     const dealsList = document.getElementById('dealsList');
     dealsList.innerHTML = `
@@ -1794,34 +1672,29 @@ async function loadDeals(forceRefresh = false) {
             <p>Loading current deals...</p>
         </div>
     `;
-
+    
     try {
         // Check cache first
         const now = Date.now();
         if (!forceRefresh && dealsCache.data.length > 0 && 
-            dealsCache.page === currentPage &&
             (now - dealsCache.timestamp) < dealsCache.ttl) {
             currentDeals = dealsCache.data;
-            totalDealsCount = dealsCache.totalCount;
             displayDeals(currentDeals);
             sortDeals(document.getElementById('dealsSort').value);
-            updatePaginationControls();
             showNotification("Deals loaded from cache!", "success");
             return;
         }
         
-        console.log(`Fetching fresh deals data for page ${currentPage}...`);
+        console.log('Fetching fresh deals data...');
         
         // Try to use real API with your credentials
-        let result = await fetchDealsWithCredentials(currentPage, dealsPerPage);
+        let deals = await fetchDealsWithCredentials();
         
         // If API fails, fall back to sample data
-        if (!result || !result.deals || result.deals.length === 0) {
+        if (!deals || deals.length === 0) {
             console.log('API failed, using sample data');
-            result = { deals: await loadSampleDeals(), totalCount: 0 };
+            deals = await loadSampleDeals();
         }
-        
-        let { deals, totalCount } = result;
         
         // Remove duplicate deals and keep the best discount
         deals = dedupeDeals(deals);
@@ -1841,13 +1714,10 @@ async function loadDeals(forceRefresh = false) {
         
         // Cache the results
         currentDeals = deals;
-        totalDealsCount = totalCount;
         dealsCache = {
             data: deals,
-            totalCount,
             timestamp: now,
-            ttl: 3600000,
-            page: currentPage
+            ttl: 3600000
         };
         
         displayDeals(deals);
@@ -1860,13 +1730,9 @@ async function loadDeals(forceRefresh = false) {
         }
         
         sortDeals(document.getElementById('dealsSort').value);
-        updatePaginationControls();
-
-        showNotification(`Loaded ${deals.length} deals (page ${currentPage})!`, "success");
-
-        markPerformance('deals-load-end');
-        measurePerformance('deals-loading-time', 'deals-load-start', 'deals-load-end');
-
+        
+        showNotification(`Loaded ${deals.length} current deals!`, "success");
+        
     } catch (error) {
         console.error('Error loading deals:', error);
         dealsList.innerHTML = `
@@ -1882,49 +1748,12 @@ async function loadDeals(forceRefresh = false) {
     }
 }
 
-// Change to a different page
-function changePage(newPage) {
-    if (newPage < 1 || newPage > Math.ceil(totalDealsCount / dealsPerPage)) return;
-    currentPage = newPage;
-    loadDeals();
-}
-
-// Update pagination controls visibility and state
-function updatePaginationControls() {
-    const controls = document.getElementById('paginationControls');
-    const prevBtn = document.getElementById('prevPageBtn');
-    const nextBtn = document.getElementById('nextPageBtn');
-    const pageInfo = document.getElementById('pageInfo');
-    
-    if (totalDealsCount === 0) {
-        controls.style.display = 'none';
-        return;
-    }
-    
-    controls.style.display = 'flex';
-    
-    const totalPages = Math.ceil(totalDealsCount / dealsPerPage);
-    pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
-    
-    prevBtn.disabled = currentPage <= 1;
-    nextBtn.disabled = currentPage >= totalPages;
-
-    // Scroll to deals section when page changes
-    setTimeout(() => {
-        const dealsList = document.getElementById('dealsList');
-        if (dealsList) {
-            dealsList.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    }, 500);
-}
-
 // Fetch real deals from Steam, Epic Games using serverless API (CORS-safe)
-async function fetchDealsWithCredentials(page = 1, limit = 50) {
+async function fetchDealsWithCredentials() {
     try {
-        console.log(`📡 Fetching deals via serverless API... (page ${page}, limit ${limit})`);
+        console.log('📡 Fetching deals via serverless API...');
 
-        const url = `/api/deals?page=${page}&limit=${limit}`;
-        const response = await fetch(url);
+        const response = await fetch('/api/deals');
 
         if (!response.ok) {
             throw new Error(`API returned ${response.status}`);
@@ -1936,7 +1765,7 @@ async function fetchDealsWithCredentials(page = 1, limit = 50) {
             throw new Error(apiResponse.error || 'API returned error');
         }
 
-        console.log(`✅ Loaded ${apiResponse.count} deals (total: ${apiResponse.totalCount})`);
+        console.log(`✅ Loaded ${apiResponse.count} deals`);
 
         if (!apiResponse.deals || apiResponse.deals.length === 0) {
             console.log('⚠️ No deals available, showing sample deals');
@@ -1944,11 +1773,11 @@ async function fetchDealsWithCredentials(page = 1, limit = 50) {
                 'No deals available at the moment',
                 'warning'
             );
-            return { deals: [], totalCount: 0 };
+            return [];
         }
 
         // Transform API response to client-side format
-        const deals = apiResponse.deals.map(deal => {
+        return apiResponse.deals.map(deal => {
             // Ensure prices are in dollars, not cents
             // If price > 100, it's likely in cents (e.g., 4990 cents = $49.90)
             let salePrice = parseFloat(deal.salePrice) || 0;
@@ -1990,12 +1819,10 @@ async function fetchDealsWithCredentials(page = 1, limit = 50) {
             };
         });
 
-        return { deals, totalCount: apiResponse.totalCount };
-
     } catch (error) {
         console.error('❌ Deals fetch error:', error);
         console.log('⚠️ Falling back to empty deals');
-        return { deals: [], totalCount: 0 };
+        return [];
     }
 }
 
@@ -2144,11 +1971,22 @@ function displayDeals(deals, resetPage = true) {
         return;
     }
     
-    // Store currently displayed deals
+    // Store currently displayed deals for pagination
     displayedDeals = deals;
     
-    // Create deals HTML - no client-side pagination needed since backend handles it
-    let dealsHTML = deals.map(deal => {
+    // Reset to page 1 only when displaying new deals (not when just changing pages)
+    if (resetPage) {
+        currentPage = 1;
+    }
+    
+    // Calculate pagination
+    const totalPages = Math.ceil(deals.length / dealsPerPage);
+    const startIndex = (currentPage - 1) * dealsPerPage;
+    const endIndex = startIndex + dealsPerPage;
+    const paginatedDeals = deals.slice(startIndex, endIndex);
+    
+    // Create deals HTML
+    let dealsHTML = paginatedDeals.map(deal => {
         return `
             <div class="deal-card">
                 <div class="deal-header">
@@ -2186,7 +2024,47 @@ function displayDeals(deals, resetPage = true) {
         `;
     }).join('');
     
-    dealsList.innerHTML = dealsHTML;
+    // Create pagination controls
+    let paginationHTML = '';
+    if (totalPages > 1) {
+        paginationHTML = `
+            <div class="pagination">
+                <div class="pagination-info">
+                    Page <span class="current-page">${currentPage}</span> out of <span class="total-pages">${totalPages}</span>
+                </div>
+                <div class="pagination-controls">
+                    ${currentPage > 1 ? `<button class="pagination-btn" onclick="goToPage(${currentPage - 1})"><i class="fas fa-chevron-left"></i> Prev</button>` : ''}
+        `;
+        
+        // Show page numbers
+        const maxPagesToShow = 5;
+        const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+        const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+        
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === currentPage) {
+                paginationHTML += `<button class="pagination-btn active">${i}</button>`;
+            } else {
+                paginationHTML += `<button class="pagination-btn" onclick="goToPage(${i})">${i}</button>`;
+            }
+        }
+        
+        paginationHTML += `
+                    ${currentPage < totalPages ? `<button class="pagination-btn" onclick="goToPage(${currentPage + 1})">Next <i class="fas fa-chevron-right"></i></button>` : ''}
+                </div>
+            </div>
+        `;
+    }
+    
+    dealsList.innerHTML = dealsHTML + paginationHTML;
+}
+
+// Navigate to a specific page
+function goToPage(page) {
+    currentPage = page;
+    displayDeals(displayedDeals, false);
+    // Scroll to deals section
+    document.getElementById('dealsList').scrollIntoView({ behavior: 'smooth' });
 }
 
 // Sort deals based on selected option
@@ -2261,8 +2139,7 @@ function refreshDeals() {
         showNotification("Already loading deals...", "warning");
         return;
     }
-    // Reset to page 1 and force refresh by bypassing cache
-    currentPage = 1;
+    // Force refresh by bypassing cache
     loadDeals(true);
 }
 
