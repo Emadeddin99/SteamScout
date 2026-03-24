@@ -12,6 +12,14 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=900, s-maxage=900"
+        },
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "key": "Content-Encoding",
+          "value": "identity"
         }
       ]
     },
