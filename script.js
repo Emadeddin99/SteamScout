@@ -1911,7 +1911,15 @@ function updatePaginationControls() {
 
     // Scroll to pagination controls when page changes
     setTimeout(() => {
-        controls.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        console.log('Attempting to scroll to deals section');
+        const dealsList = document.getElementById('dealsList');
+        if (dealsList) {
+            console.log('Deals list found, scrolling...');
+            dealsList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+            console.log('Deals list not found, scrolling to top');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
     }, 200);
 }
 
