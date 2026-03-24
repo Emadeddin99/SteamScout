@@ -18,13 +18,19 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
     res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
-    // Enable compression
-    res.setHeader('Content-Encoding', 'gzip');
-
     // Handle preflight
     if (req.method === 'OPTIONS') {
         res.status(200).end();
         return;
+    }
+
+    // Simple health check
+    if (req.query.health === '1') {
+        return res.status(200).json({
+            success: true,
+            message: 'API is healthy',
+            timestamp: new Date().toISOString()
+        });
     }
 
     try {
@@ -45,12 +51,26 @@ export default async function handler(req, res) {
         } else {
             console.log('[API] Cache miss - fetching fresh data...');
 
-            // Fetch from both sources
-            console.log('[API] Fetching from both ITAD and CheapShark...');
-            const [itadDeals, cheapsharkDeals] = await Promise.all([
-                fetchIsThereAnyDealDeals(),
-                fetchCheapSharkDeals()
-            ]);
+// Fetch from both sources with timeout
+        console.log('[API] Fetching from both ITAD and CheapShark...');
+        
+        // Add timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('API timeout after 25 seconds')), 25000);
+        });
+        
+        const fetchPromise = Promise.all([
+            fetchIsThereAnyDealDeals(),
+            fetchCheapSharkDeals()
+        ]);
+        
+        const [itadDeals, cheapsharkDeals] = await Promise.race([
+            fetchPromise,
+            timeoutPromise.then(() => { throw new Error('Timeout'); })
+        ]).catch(error => {
+            console.warn('[API] Fetch timeout or error:', error.message);
+            return [[], []]; // Return empty arrays on timeout
+        });
 
             console.log(`[API] ITAD: ${itadDeals.length} deals, CheapShark: ${cheapsharkDeals.length} deals`);
 

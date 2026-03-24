@@ -42,8 +42,17 @@ function markPerformance(name) {
 }
 
 function measurePerformance(name, startMark, endMark) {
-    if ('performance' in window && performance.measure) {
+    if ('performance' in window && performance.measure && performance.getEntriesByName) {
         try {
+            // Check if marks exist before measuring
+            const startEntry = performance.getEntriesByName(startMark)[0];
+            const endEntry = performance.getEntriesByName(endMark)[0];
+            
+            if (!startEntry || !endEntry) {
+                console.warn(`Performance marks not found: ${startMark}, ${endMark}`);
+                return null;
+            }
+            
             performance.measure(name, startMark, endMark);
             const measure = performance.getEntriesByName(name)[0];
             console.log(`🚀 ${name}: ${measure.duration.toFixed(2)}ms`);
