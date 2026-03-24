@@ -1887,14 +1887,6 @@ function changePage(newPage) {
     if (newPage < 1 || newPage > Math.ceil(totalDealsCount / dealsPerPage)) return;
     currentPage = newPage;
     loadDeals();
-
-    // Scroll to top of deals section (pagination controls) after a brief delay
-    setTimeout(() => {
-        const paginationControls = document.getElementById('paginationControls');
-        if (paginationControls) {
-            paginationControls.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-    }, 100);
 }
 
 // Update pagination controls visibility and state
@@ -1916,6 +1908,11 @@ function updatePaginationControls() {
     
     prevBtn.disabled = currentPage <= 1;
     nextBtn.disabled = currentPage >= totalPages;
+
+    // Scroll to pagination controls when page changes
+    setTimeout(() => {
+        controls.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 200);
 }
 
 // Fetch real deals from Steam, Epic Games using serverless API (CORS-safe)
