@@ -4,13 +4,6 @@
  * Returns normalized deal objects with consistent shape
  */
 
-// Global cache for processed deals data
-let dealsCache = {
-    data: null,
-    timestamp: 0,
-    ttl: 15 * 60 * 1000 // 15 minutes cache
-};
-
 export default async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -24,102 +17,52 @@ export default async function handler(req, res) {
         return;
     }
 
-    // Simple health check
-    if (req.query.health === '1') {
-        return res.status(200).json({
-            success: true,
-            message: 'API is healthy',
-            timestamp: new Date().toISOString()
-        });
-    }
-
     try {
         console.log('[API] Starting deals fetch...');
-
-        // Parse pagination parameters
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 50;
-        const offset = (page - 1) * limit;
-
-        // For serverless environment, fetch fresh data each time
-        // Don't use cache for pagination to ensure data consistency
-        console.log('[API] Fetching fresh data for page', page);
-
-// Fetch from both sources with timeout
+        
+        // Fetch from both sources
         console.log('[API] Fetching from both ITAD and CheapShark...');
-        
-        // Add timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('API timeout after 25 seconds')), 25000);
-        });
-        
-        const fetchPromise = Promise.all([
+        const [itadDeals, cheapsharkDeals] = await Promise.all([
             fetchIsThereAnyDealDeals(),
             fetchCheapSharkDeals()
         ]);
         
-        const [itadDeals, cheapsharkDeals] = await Promise.race([
-            fetchPromise,
-            timeoutPromise.then(() => { throw new Error('Timeout'); })
-        ]).catch(error => {
-            console.warn('[API] Fetch timeout or error:', error.message);
-            return [[], []]; // Return empty arrays on timeout
-        });
-
-            console.log(`[API] ITAD: ${itadDeals.length} deals, CheapShark: ${cheapsharkDeals.length} deals`);
-
-            // Combine deals from both sources
-            deals = [...itadDeals, ...cheapsharkDeals];
-            console.log(`[API] Combined total: ${deals.length} deals before deduplication`);
-
-            // Deduplicate deals by steamAppID, keeping best discount
-            deals = deduplicateDeals(deals);
-
-            // Filter invalid deals
-            deals = filterValidDeals(deals);
-
-            // Sort by discount descending
-            deals = deals.sort((a, b) => b.discount - a.discount);
-
-            // Cache the processed data (only for this request)
-            dealsCache = {
-                data: deals,
-                timestamp: now,
-                ttl: 15 * 60 * 1000 // 15 minutes
-            };
-
-            console.log(`[API] ✅ Cached ${deals.length} processed deals`);
-
-        // Debug mode: include cache info when ?debug=1
+        console.log(`[API] ITAD: ${itadDeals.length} deals, CheapShark: ${cheapsharkDeals.length} deals`);
+        
+        // Combine deals from both sources
+        let deals = [...itadDeals, ...cheapsharkDeals];
+        console.log(`[API] Combined total: ${deals.length} deals before deduplication`);
+        
+        // Debug mode: include source counts and small samples when ?debug=1
         const debugMode = req.query && (req.query.debug === '1' || req.query.debug === 'true');
-        const debugInfo = debugMode ? {
-            totalCached: dealsCache.data ? dealsCache.data.length : 0,
-            cacheAge: dealsCache.timestamp ? Math.round((now - dealsCache.timestamp) / 1000) + 's' : 'none',
-            usingCache: dealsCache.data && (now - dealsCache.timestamp) < dealsCache.ttl
-        } : null;
+        const debugInfo = {
+            itadCount: Array.isArray(itadDeals) ? itadDeals.length : 0,
+            cheapsharkCount: Array.isArray(cheapsharkDeals) ? cheapsharkDeals.length : 0,
+            itadSample: (Array.isArray(itadDeals) ? itadDeals.slice(0,3) : []),
+            cheapsharkSample: (Array.isArray(cheapsharkDeals) ? cheapsharkDeals.slice(0,3) : [])
+        };
 
-        // Get total count before pagination
-        // Limit total pages to prevent excessive API calls
-        const maxPages = 10; // Maximum 10 pages to prevent API abuse
-        const maxTotalDeals = maxPages * limit;
-        const totalCount = Math.min(deals.length, maxTotalDeals);
+        // Deduplicate deals by steamAppID, keeping best discount
+        deals = deduplicateDeals(deals);
+        
+        // Filter invalid deals
+        deals = filterValidDeals(deals);
+        
+        // Sort by discount descending, limit to 3000
+        deals = deals
+            .sort((a, b) => b.discount - a.discount)
+            .slice(0, 3000);
 
-        // Apply pagination
-        const paginatedDeals = deals.slice(offset, offset + limit);
-
-        console.log(`[API] ✅ Returning ${paginatedDeals.length} deals (page ${page}, limit ${limit}, total ${totalCount})`);
+        console.log(`[API] ✅ Returning ${deals.length} deals`);
 
         const responsePayload = {
             success: true,
-            count: paginatedDeals.length,
-            totalCount,
-            page,
-            limit,
-            deals: paginatedDeals,
+            count: deals.length,
+            deals,
             timestamp: new Date().toISOString()
         };
 
-        if (debugMode && debugInfo) {
+        if (debugMode) {
             responsePayload.debug = debugInfo;
         }
 
@@ -371,11 +314,21 @@ async function fetchCheapSharkDeals() {
 
             console.log(`[API] CheapShark normalized: ${normalized.length} valid deals`);
 
-            // If nothing was fetched from CheapShark, return empty array
-            // Client-side code will handle fallback to sample data
+            // If nothing was fetched from CheapShark, fall back to local sample file
             if (normalized.length === 0) {
-                console.warn('[API] CheapShark returned no deals; returning empty array');
-                return [];
+                try {
+                    console.warn('[API] CheapShark returned no deals; attempting to load local sample fallback');
+                    const fs = require('fs');
+                    const path = require('path');
+                    const samplePath = path.resolve(__dirname, '../assets/sample-deals.json');
+                    const sampleRaw = fs.readFileSync(samplePath, 'utf-8');
+                    const sample = JSON.parse(sampleRaw);
+                    console.log(`[API] Loaded ${sample.length} deals from local sample fallback`);
+                    return sample;
+                } catch (err) {
+                    console.error('[API] Failed to load local sample fallback:', err.message);
+                    return [];
+                }
             }
 
             return normalized;

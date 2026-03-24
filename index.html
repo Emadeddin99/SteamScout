@@ -5,23 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SteamScout - Steam Price Calculator & Deal Finder</title>
     <meta name="description" content="Calculate your Steam game purchases with automatic tax calculation, browse real-time deals, and track your history.">
-
-    <!-- Performance optimizations -->
-    <link rel="dns-prefetch" href="//api.isthereanydeal.com">
-    <link rel="dns-prefetch" href="//www.cheapshark.com">
-    <link rel="dns-prefetch" href="//store.steampowered.com">
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
-
-    <!-- Preload critical resources -->
-    <link rel="preload" href="styles.css" as="style">
-    <link rel="preload" href="script.js" as="script">
-    <link rel="preload" href="config.js" as="script">
-
-    <!-- Styles -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
-
-    <!-- Favicon -->
     <link rel="icon" type="image/png" href="assets/logo.png">
 </head>
 <body>
@@ -243,16 +228,6 @@
                             <i class="fas fa-sync-alt"></i>
                         </button>
                     </div>
-                </div>
-
-                <div id="paginationControls" class="pagination-controls" style="display: none;">
-                    <button id="prevPageBtn" class="pagination-btn" onclick="changePage(currentPage - 1)" disabled>
-                        <i class="fas fa-chevron-left"></i> Previous
-                    </button>
-                    <span id="pageInfo" class="page-info">Page 1</span>
-                    <button id="nextPageBtn" class="pagination-btn" onclick="changePage(currentPage + 1)">
-                        Next <i class="fas fa-chevron-right"></i>
-                    </button>
                 </div>
 
                 <div id="dealsList" class="deals-grid">

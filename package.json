@@ -2,22 +2,5 @@
   "name": "steam-scout",
   "version": "1.0.0",
   "private": true,
-  "description": "Steam Price Calculator & Deal Finder - Optimized for Performance",
-  "scripts": {
-    "build": "echo 'Building optimized assets...'",
-    "minify-css": "echo 'Minifying CSS...'",
-    "minify-js": "echo 'Minifying JavaScript...'",
-    "optimize": "npm run minify-css && npm run minify-js",
-    "deploy": "vercel --prod"
-  },
-  "dependencies": {},
-  "devDependencies": {},
-  "engines": {
-    "node": ">=14.0.0"
-  },
-  "browserslist": [
-    "last 2 versions",
-    "> 1%",
-    "not dead"
-  ]
+  "dependencies": {}
 }
