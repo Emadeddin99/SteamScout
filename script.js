@@ -1887,6 +1887,12 @@ function changePage(newPage) {
     if (newPage < 1 || newPage > Math.ceil(totalDealsCount / dealsPerPage)) return;
     currentPage = newPage;
     loadDeals();
+
+    // Scroll to top of deals section
+    const dealsList = document.getElementById('dealsList');
+    if (dealsList) {
+        dealsList.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 
 // Update pagination controls visibility and state
