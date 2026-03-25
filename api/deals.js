@@ -37,72 +37,8 @@ export default async function handler(req, res) {
         let deals = [...itadDeals, ...cheapsharkDeals];
         console.log(`[API] Combined total: ${deals.length} deals before deduplication`);
 
-        // If no deals from external APIs, use hardcoded sample data as fallback
         if (deals.length === 0) {
-            console.warn('[API] No deals from external APIs, using hardcoded sample data');
-            deals = [
-                {
-                    title: "Cyberpunk 2077",
-                    steamAppID: 1091500,
-                    salePrice: 29.99,
-                    normalPrice: 59.99,
-                    discount: 50,
-                    expiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
-                    store: "Steam",
-                    type: "sale",
-                    source: "sample",
-                    url: "https://store.steampowered.com/app/1091500"
-                },
-                {
-                    title: "The Witcher 3: Wild Hunt",
-                    steamAppID: 292030,
-                    salePrice: 9.99,
-                    normalPrice: 39.99,
-                    discount: 75,
-                    expiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
-                    store: "Steam",
-                    type: "sale",
-                    source: "sample",
-                    url: "https://store.steampowered.com/app/292030"
-                },
-                {
-                    title: "Hades",
-                    steamAppID: 1145360,
-                    salePrice: 19.99,
-                    normalPrice: 24.99,
-                    discount: 20,
-                    expiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
-                    store: "Steam",
-                    type: "sale",
-                    source: "sample",
-                    url: "https://store.steampowered.com/app/1145360"
-                },
-                {
-                    title: "Stardew Valley",
-                    steamAppID: 413150,
-                    salePrice: 3.99,
-                    normalPrice: 4.99,
-                    discount: 20,
-                    expiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
-                    store: "Steam",
-                    type: "sale",
-                    source: "sample",
-                    url: "https://store.steampowered.com/app/413150"
-                },
-                {
-                    title: "Among Us",
-                    steamAppID: 945360,
-                    salePrice: 3.99,
-                    normalPrice: 4.99,
-                    discount: 20,
-                    expiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
-                    store: "Steam",
-                    type: "sale",
-                    source: "sample",
-                    url: "https://store.steampowered.com/app/945360"
-                }
-            ];
-            console.log(`[API] Using ${deals.length} hardcoded sample deals`);
+            console.warn('[API] No deals from external APIs. Returning empty deal list.');
         }
 
         // Debug mode: include source counts and small samples when ?debug=1

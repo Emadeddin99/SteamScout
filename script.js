@@ -15,6 +15,8 @@ let dealsLoading = false;
 let isLoadingMore = false; // Flag for loading more deals
 let hasMoreDeals = true; // Flag to track if there are more deals to load
 let currentOffset = 0; // Current offset for API pagination
+let currentPage = 1; // Track current page number
+let totalPages = 1; // Total number of pages from API
 const dealsPerLoad = 30; // Number of deals to load per request
 
 // Intersection Observer for infinite scroll
@@ -1699,11 +1701,15 @@ async function loadDeals(forceRefresh = false) {
 
         if (!deals || deals.length === 0) {
             if (currentOffset === 0) {
-                console.log('No deals available, using sample data');
-                const sampleDeals = await loadSampleDeals();
-                currentDeals = sampleDeals.slice(0, dealsPerLoad);
-                hasMoreDeals = sampleDeals.length > dealsPerLoad;
-                console.log(`Using ${currentDeals.length} sample deals`);
+                dealsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-search"></i>
+                        <p>No deals found right now.</p>
+                        <p class="subtext">Try refreshing or check back later.</p>
+                    </div>
+                `;
+                hasMoreDeals = false;
+                currentDeals = [];
             } else {
                 hasMoreDeals = false;
             }
@@ -1726,6 +1732,7 @@ async function loadDeals(forceRefresh = false) {
 
             hasMoreDeals = chunkHasMore; // Use the hasMore flag from the API
         }
+
 
         displayDeals(currentDeals, currentOffset > 0); // Pass append flag
 
@@ -1754,6 +1761,8 @@ async function loadDeals(forceRefresh = false) {
                 </div>
             `;
         }
+        hasMoreDeals = false;
+        updatePaginationInfo();
         showNotification("Failed to load deals", "danger");
     } finally {
         dealsLoading = false;
@@ -1761,24 +1770,39 @@ async function loadDeals(forceRefresh = false) {
     }
 }
 
-// Fetch real deals from Steam, Epic Games using serverless API (CORS-safe)
+// Fetch real deals from Steam using serverless API (CORS-safe)
 async function fetchDealsChunk(offset, limit, forceRefresh = false) {
     try {
         console.log('📡 Fetching deals chunk via API...');
 
-        // For testing, always use sample data
-        console.log('🔄 Using sample data for testing infinite scroll');
-        const allSampleDeals = await loadSampleDeals();
-        const deals = allSampleDeals.slice(offset, offset + limit);
-        const hasMore = offset + limit < allSampleDeals.length;
+        const url = `/api/deals?offset=${offset}&limit=${limit}&forceRefresh=${forceRefresh ? 1 : 0}`;
+        const response = await fetch(url);
 
-        console.log(`✅ Loaded ${deals.length} sample deals chunk (offset: ${offset}, limit: ${limit}, hasMore: ${hasMore})`);
+        if (!response.ok) {
+            throw new Error(`API returned status ${response.status}`);
+        }
 
-        // Return both deals and hasMore flag
+        const apiResponse = await response.json();
+
+        if (!apiResponse.success) {
+            throw new Error(apiResponse.error || 'API returned failure');
+        }
+
+        const deals = Array.isArray(apiResponse.deals) ? apiResponse.deals : [];
+        const hasMore = Boolean(apiResponse.hasMore) || ((offset + limit) < (apiResponse.total || 0));
+        totalPages = apiResponse.total ? Math.max(1, Math.ceil(apiResponse.total / dealsPerLoad)) : 1;
+        currentPage = Math.floor(offset / dealsPerLoad) + 1;
+
+        console.log(`✅ API chunk: ${deals.length} deals, hasMore=${hasMore}, page=${currentPage}/${totalPages}`);
+
+        updatePaginationInfo();
+
         return { deals, hasMore };
 
     } catch (error) {
         console.error('❌ Deals chunk fetch error:', error);
+        hasMoreDeals = false;
+        updatePaginationInfo();
         return { deals: [], hasMore: false };
     }
 }
@@ -1862,6 +1886,20 @@ async function loadMoreDeals() {
     }
 }
 
+function updatePaginationInfo() {
+    const paginationInfo = document.getElementById('paginationInfo');
+    if (!paginationInfo) return;
+
+    if (!hasMoreDeals && currentPage === 1 && totalPages === 1) {
+        // Hide on initial empty/no-more state if no valid pagination
+        paginationInfo.style.display = 'none';
+        return;
+    }
+
+    paginationInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+    paginationInfo.style.display = 'block';
+}
+
 // fetchEpicGamesDeals removed in Steam-only build (Epic support not included)
 async function fetchEpicGamesDeals() {
     return []; // Stub kept for compatibility
@@ -1899,57 +1937,10 @@ function calculateExpirationDate(dealID) {
     return expirationDate;
 }
 
-// Sample data as fallback
+// Sample data fallback removed in production mode. API should provide deals now.
 async function loadSampleDeals() {
-    console.log('Loading frontend sample deals for testing infinite scroll');
-    const sampleGames = [
-        { title: "Cyberpunk 2077", price: 29.99, originalPrice: 59.99, discount: 50, steamAppID: 1091500 },
-        { title: "The Witcher 3: Wild Hunt", price: 9.99, originalPrice: 39.99, discount: 75, steamAppID: 292030 },
-        { title: "Hades", price: 19.99, originalPrice: 24.99, discount: 20, steamAppID: 1145360 },
-        { title: "Stardew Valley", price: 4.99, originalPrice: 14.99, discount: 67, steamAppID: 413150 },
-        { title: "Among Us", price: 3.99, originalPrice: 4.99, discount: 20, steamAppID: 945360 },
-        { title: "Rocket League", price: 19.99, originalPrice: 39.99, discount: 50, steamAppID: 252950 },
-        { title: "Portal 2", price: 9.99, originalPrice: 19.99, discount: 50, steamAppID: 620 },
-        { title: "Half-Life: Alyx", price: 39.99, originalPrice: 59.99, discount: 33, steamAppID: 546560 },
-        { title: "No Man's Sky", price: 29.99, originalPrice: 59.99, discount: 50, steamAppID: 275850 },
-        { title: "Risk of Rain 2", price: 14.99, originalPrice: 24.99, discount: 40, steamAppID: 632360 },
-        { title: "Dead Cells", price: 19.99, originalPrice: 24.99, discount: 20, steamAppID: 588650 },
-        { title: "Hollow Knight", price: 9.99, originalPrice: 14.99, discount: 33, steamAppID: 367520 },
-        { title: "Celeste", price: 9.99, originalPrice: 19.99, discount: 50, steamAppID: 504230 },
-        { title: "Undertale", price: 9.99, originalPrice: 9.99, discount: 0, steamAppID: 391540 },
-        { title: "Ori and the Will of the Wisps", price: 19.99, originalPrice: 29.99, discount: 33, steamAppID: 1057090 },
-        { title: "Loop Hero", price: 14.99, originalPrice: 19.99, discount: 25, steamAppID: 1282730 },
-        { title: "Spiritfarer", price: 19.99, originalPrice: 29.99, discount: 33, steamAppID: 972660 },
-        { title: "Outer Wilds", price: 19.99, originalPrice: 24.99, discount: 20, steamAppID: 753640 },
-        { title: "Katana Zero", price: 9.99, originalPrice: 14.99, discount: 33, steamAppID: 460950 },
-        { title: "Valheim", price: 19.99, originalPrice: 24.99, discount: 20, steamAppID: 892970 },
-        { title: "Hades II", price: 29.99, originalPrice: 39.99, discount: 25, steamAppID: 1145350 },
-        { title: "Baldur's Gate 3", price: 39.99, originalPrice: 59.99, discount: 33, steamAppID: 1086940 },
-        { title: "Elden Ring", price: 39.99, originalPrice: 59.99, discount: 33, steamAppID: 1245620 },
-        { title: "Resident Evil 4", price: 39.99, originalPrice: 59.99, discount: 33, steamAppID: 2050650 },
-        { title: "The Last of Us Part I", price: 39.99, originalPrice: 59.99, discount: 33, steamAppID: 1888930 }
-    ];
-
-    return sampleGames.map((game, index) => ({
-        title: game.title,
-        price: game.price,
-        originalPrice: game.originalPrice,
-        discountPercent: game.discount,
-        discount: game.discount,
-        expirationDate: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
-        type: "sale",
-        store: "Steam",
-        source: "frontend-sample",
-        platform: 'steam',
-        rating: 4.5,
-        storeID: '1',
-        storeName: 'Steam',
-        steamAppID: game.steamAppID,
-        appId: game.steamAppID,
-        id: game.steamAppID,
-        storeUrl: getSteamUrl({ steamAppID: game.steamAppID, title: game.title }),
-        dealUrl: getSteamUrl({ steamAppID: game.steamAppID, title: game.title })
-    }));
+    console.warn('loadSampleDeals called: sample deal mode is disabled.');
+    return [];
 }
 
 // Display deals in the list

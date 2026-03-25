@@ -1116,6 +1116,13 @@ a:hover {
     margin-bottom: 24px;
 }
 
+.pagination-info {
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: var(--text-light);
+    text-align: right;
+}
+
 @media (max-width: 768px) {
     .deals-controls {
         grid-template-columns: 1fr;
