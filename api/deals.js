@@ -19,20 +19,24 @@ export default async function handler(req, res) {
 
     try {
         console.log('[API] Starting deals fetch...');
-        
+
+        // Parse pagination parameters
+        const offset = parseInt(req.query.offset) || 0;
+        const limit = parseInt(req.query.limit) || 50; // Default to 50 for infinite scroll
+
         // Fetch from both sources
         console.log('[API] Fetching from both ITAD and CheapShark...');
         const [itadDeals, cheapsharkDeals] = await Promise.all([
             fetchIsThereAnyDealDeals(),
             fetchCheapSharkDeals()
         ]);
-        
+
         console.log(`[API] ITAD: ${itadDeals.length} deals, CheapShark: ${cheapsharkDeals.length} deals`);
-        
+
         // Combine deals from both sources
         let deals = [...itadDeals, ...cheapsharkDeals];
         console.log(`[API] Combined total: ${deals.length} deals before deduplication`);
-        
+
         // Debug mode: include source counts and small samples when ?debug=1
         const debugMode = req.query && (req.query.debug === '1' || req.query.debug === 'true');
         const debugInfo = {
@@ -44,21 +48,27 @@ export default async function handler(req, res) {
 
         // Deduplicate deals by steamAppID, keeping best discount
         deals = deduplicateDeals(deals);
-        
+
         // Filter invalid deals
         deals = filterValidDeals(deals);
-        
-        // Sort by discount descending, limit to 3000
-        deals = deals
-            .sort((a, b) => b.discount - a.discount)
-            .slice(0, 3000);
 
-        console.log(`[API] ✅ Returning ${deals.length} deals`);
+        // Sort by discount descending
+        deals = deals.sort((a, b) => b.discount - a.discount);
+
+        // Apply pagination
+        const totalDeals = deals.length;
+        const paginatedDeals = deals.slice(offset, offset + limit);
+
+        console.log(`[API] ✅ Returning ${paginatedDeals.length} deals (offset: ${offset}, limit: ${limit}, total: ${totalDeals})`);
 
         const responsePayload = {
             success: true,
-            count: deals.length,
-            deals,
+            count: paginatedDeals.length,
+            total: totalDeals,
+            offset: offset,
+            limit: limit,
+            deals: paginatedDeals,
+            hasMore: (offset + limit) < totalDeals,
             timestamp: new Date().toISOString()
         };
 
