@@ -48,17 +48,29 @@ export default async function handler(req, res) {
         // Filter invalid deals
         deals = filterValidDeals(deals);
         
-        // Sort by discount descending, limit to 3000
-        deals = deals
-            .sort((a, b) => b.discount - a.discount)
-            .slice(0, 3000);
+        // Sort by discount descending
+        deals = deals.sort((a, b) => b.discount - a.discount);
 
-        console.log(`[API] ✅ Returning ${deals.length} deals`);
+        // Parse pagination parameters
+        const limit = Math.min(parseInt(req.query.limit) || 30, 100); // Default 30, max 100
+        const offset = Math.max(0, parseInt(req.query.offset) || 0);
+        const totalCount = deals.length;
+        
+        // Apply pagination
+        const paginatedDeals = deals.slice(offset, offset + limit);
+
+        console.log(`[API] ✅ Returning ${paginatedDeals.length}/${totalCount} deals (offset: ${offset}, limit: ${limit})`);
 
         const responsePayload = {
             success: true,
-            count: deals.length,
-            deals,
+            count: paginatedDeals.length,
+            deals: paginatedDeals,
+            pagination: {
+                offset,
+                limit,
+                total: totalCount,
+                hasMore: (offset + limit) < totalCount
+            },
             timestamp: new Date().toISOString()
         };
 
