@@ -29,12 +29,6 @@ let currentGameSuggestions = []; // Store current suggestions for Enter key disp
 let currentPage = 1;
 const dealsPerPage = 12;
 
-// API pagination
-let apiOffset = 0;
-let apiLimit = 30;
-let totalDealsCount = 0;
-let hasMoreDeals = true;
-
 
 
 // Initialize the calculator
@@ -1672,14 +1666,6 @@ async function loadDeals(forceRefresh = false) {
     
     dealsLoading = true;
     const dealsList = document.getElementById('dealsList');
-    
-    // Reset pagination on fresh load
-    if (forceRefresh) {
-        apiOffset = 0;
-        currentDeals = [];
-        hasMoreDeals = true;
-    }
-    
     dealsList.innerHTML = `
         <div class="loading-deals">
             <div class="spinner"></div>
@@ -1688,10 +1674,21 @@ async function loadDeals(forceRefresh = false) {
     `;
     
     try {
+        // Check cache first
+        const now = Date.now();
+        if (!forceRefresh && dealsCache.data.length > 0 && 
+            (now - dealsCache.timestamp) < dealsCache.ttl) {
+            currentDeals = dealsCache.data;
+            displayDeals(currentDeals);
+            sortDeals(document.getElementById('dealsSort').value);
+            showNotification("Deals loaded from cache!", "success");
+            return;
+        }
+        
         console.log('Fetching fresh deals data...');
         
-        // Fetch deals with pagination
-        let deals = await fetchDealsWithCredentials(apiOffset, apiLimit);
+        // Try to use real API with your credentials
+        let deals = await fetchDealsWithCredentials();
         
         // If API fails, fall back to sample data
         if (!deals || deals.length === 0) {
@@ -1715,18 +1712,15 @@ async function loadDeals(forceRefresh = false) {
         });
         console.log(`Filtered deals: ${deals.length} deals after removing fake discounts and invalid prices`);
         
-        // Append to currentDeals instead of replacing
-        currentDeals = currentDeals.concat(deals);
-        
-        // Update pagination state
-        const now = Date.now();
+        // Cache the results
+        currentDeals = deals;
         dealsCache = {
-            data: currentDeals,
+            data: deals,
             timestamp: now,
             ttl: 3600000
         };
         
-        displayDeals(currentDeals);
+        displayDeals(deals);
         
         // Reapply current filter after displaying deals
         const activeFilterBtn = document.querySelector('.deals-filter-btn.active');
@@ -1737,7 +1731,7 @@ async function loadDeals(forceRefresh = false) {
         
         sortDeals(document.getElementById('dealsSort').value);
         
-        showNotification(`Loaded ${deals.length} deals!`, "success");
+        showNotification(`Loaded ${deals.length} current deals!`, "success");
         
     } catch (error) {
         console.error('Error loading deals:', error);
@@ -1755,11 +1749,11 @@ async function loadDeals(forceRefresh = false) {
 }
 
 // Fetch real deals from Steam, Epic Games using serverless API (CORS-safe)
-async function fetchDealsWithCredentials(offset = 0, limit = 30) {
+async function fetchDealsWithCredentials() {
     try {
-        console.log(`📡 Fetching deals via API (offset: ${offset}, limit: ${limit})...`);
+        console.log('📡 Fetching deals via serverless API...');
 
-        const response = await fetch(`/api/deals?offset=${offset}&limit=${limit}`);
+        const response = await fetch('/api/deals');
 
         if (!response.ok) {
             throw new Error(`API returned ${response.status}`);
@@ -1771,13 +1765,7 @@ async function fetchDealsWithCredentials(offset = 0, limit = 30) {
             throw new Error(apiResponse.error || 'API returned error');
         }
 
-        console.log(`✅ Loaded ${apiResponse.count} deals (of ${apiResponse.pagination.total} total)`);
-
-        // Store pagination info for load more button
-        if (apiResponse.pagination) {
-            totalDealsCount = apiResponse.pagination.total;
-            hasMoreDeals = apiResponse.pagination.hasMore;
-        }
+        console.log(`✅ Loaded ${apiResponse.count} deals`);
 
         if (!apiResponse.deals || apiResponse.deals.length === 0) {
             console.log('⚠️ No deals available, showing sample deals');
@@ -2068,19 +2056,7 @@ function displayDeals(deals, resetPage = true) {
         `;
     }
     
-    // Add Load More button if there are more deals from API
-    let loadMoreHTML = '';
-    if (hasMoreDeals && currentDeals.length > 0) {
-        loadMoreHTML = `
-            <div class="load-more-container" style="text-align: center; margin: 20px 0;">
-                <button class="load-more-btn" onclick="loadMoreDeals()" style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
-                    <i class="fas fa-arrow-down"></i> Load More Deals (${currentDeals.length}/${totalDealsCount})
-                </button>
-            </div>
-        `;
-    }
-    
-    dealsList.innerHTML = dealsHTML + paginationHTML + loadMoreHTML;
+    dealsList.innerHTML = dealsHTML + paginationHTML;
 }
 
 // Navigate to a specific page
@@ -2089,64 +2065,6 @@ function goToPage(page) {
     displayDeals(displayedDeals, false);
     // Scroll to deals section
     document.getElementById('dealsList').scrollIntoView({ behavior: 'smooth' });
-}
-
-// Load more deals from API
-async function loadMoreDeals() {
-    if (dealsLoading || !hasMoreDeals) return;
-    
-    dealsLoading = true;
-    const loadMoreBtn = document.querySelector('.load-more-btn');
-    if (loadMoreBtn) {
-        loadMoreBtn.disabled = true;
-        loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
-    }
-    
-    try {
-        console.log(`Loading more deals from offset ${apiOffset + apiLimit}...`);
-        
-        // Fetch next batch of deals
-        let deals = await fetchDealsWithCredentials(apiOffset + apiLimit, apiLimit);
-        
-        if (!deals || deals.length === 0) {
-            showNotification('No more deals available', 'info');
-            hasMoreDeals = false;
-            return;
-        }
-        
-        // Append to currentDeals
-        currentDeals = currentDeals.concat(deals);
-        apiOffset += apiLimit;
-        
-        // Update cache
-        dealsCache = {
-            data: currentDeals,
-            timestamp: Date.now(),
-            ttl: 3600000
-        };
-        
-        // Refresh display
-        displayDeals(currentDeals, false);
-        
-        // Reapply current filter
-        const activeFilterBtn = document.querySelector('.deals-filter-btn.active');
-        if (activeFilterBtn) {
-            const platform = activeFilterBtn.dataset.platform;
-            filterDeals(platform);
-        }
-        
-        showNotification(`Loaded ${deals.length} more deals!`, "success");
-        
-    } catch (error) {
-        console.error('Error loading more deals:', error);
-        showNotification("Failed to load more deals", "danger");
-    } finally {
-        dealsLoading = false;
-        if (loadMoreBtn) {
-            loadMoreBtn.disabled = false;
-            loadMoreBtn.innerHTML = `<i class="fas fa-arrow-down"></i> Load More Deals (${currentDeals.length}/${totalDealsCount})`;
-        }
-    }
 }
 
 // Sort deals based on selected option
