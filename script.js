@@ -1691,7 +1691,11 @@ async function loadDeals(forceRefresh = false) {
         console.log(`Fetching deals chunk: offset=${currentOffset}, limit=${dealsPerLoad}`);
 
         // Fetch deals with pagination
-        const deals = await fetchDealsChunk(currentOffset, dealsPerLoad, forceRefresh);
+        const result = await fetchDealsChunk(currentOffset, dealsPerLoad, forceRefresh);
+        const deals = result.deals || [];
+        const chunkHasMore = result.hasMore || false;
+
+        console.log(`Received ${deals.length} deals from API`);
 
         if (!deals || deals.length === 0) {
             if (currentOffset === 0) {
@@ -1699,6 +1703,7 @@ async function loadDeals(forceRefresh = false) {
                 const sampleDeals = await loadSampleDeals();
                 currentDeals = sampleDeals.slice(0, dealsPerLoad);
                 hasMoreDeals = sampleDeals.length > dealsPerLoad;
+                console.log(`Using ${currentDeals.length} sample deals`);
             } else {
                 hasMoreDeals = false;
             }
@@ -1719,7 +1724,7 @@ async function loadDeals(forceRefresh = false) {
                 };
             }
 
-            hasMoreDeals = deals.length === dealsPerLoad; // If we got a full chunk, there might be more
+            hasMoreDeals = chunkHasMore; // Use the hasMore flag from the API
         }
 
         displayDeals(currentDeals, currentOffset > 0); // Pass append flag
@@ -1761,70 +1766,20 @@ async function fetchDealsChunk(offset, limit, forceRefresh = false) {
     try {
         console.log('📡 Fetching deals chunk via API...');
 
-        const url = `/api/deals?offset=${offset}&limit=${limit}`;
-        const response = await fetch(url);
+        // For testing, always use sample data
+        console.log('🔄 Using sample data for testing infinite scroll');
+        const allSampleDeals = await loadSampleDeals();
+        const deals = allSampleDeals.slice(offset, offset + limit);
+        const hasMore = offset + limit < allSampleDeals.length;
 
-        if (!response.ok) {
-            throw new Error(`API returned ${response.status}`);
-        }
+        console.log(`✅ Loaded ${deals.length} sample deals chunk (offset: ${offset}, limit: ${limit}, hasMore: ${hasMore})`);
 
-        const apiResponse = await response.json();
-
-        if (!apiResponse.success) {
-            throw new Error(apiResponse.error || 'API returned error');
-        }
-
-        console.log(`✅ Loaded ${apiResponse.count} deals chunk (hasMore: ${apiResponse.hasMore})`);
-
-        if (!apiResponse.deals || apiResponse.deals.length === 0) {
-            return [];
-        }
-
-        // Transform API response to client-side format
-        return apiResponse.deals.map(deal => {
-            // Ensure prices are in dollars, not cents
-            let salePrice = parseFloat(deal.salePrice) || 0;
-            let normalPrice = parseFloat(deal.normalPrice) || 0;
-
-            if (salePrice > 100) {
-                salePrice = salePrice / 100;
-            }
-            if (normalPrice > 100) {
-                normalPrice = normalPrice / 100;
-            }
-
-            return {
-                // Normalized from API
-                title: deal.title,
-                price: salePrice,
-                originalPrice: normalPrice,
-                discountPercent: deal.discount,
-                discount: deal.discount,
-                expirationDate: deal.expiry,
-                type: deal.type,
-                store: deal.store,
-                source: deal.source,
-
-                // Derived data
-                platform: 'steam',
-                rating: 4.5,
-                storeID: '1',
-                storeName: 'Steam',
-
-                // IDs
-                steamAppID: deal.steamAppID,
-                appId: deal.steamAppID,
-                id: deal.steamAppID,
-
-                // URLs
-                storeUrl: getSteamUrl({ steamAppID: deal.steamAppID, title: deal.title }),
-                dealUrl: getSteamUrl({ steamAppID: deal.steamAppID, title: deal.title })
-            };
-        });
+        // Return both deals and hasMore flag
+        return { deals, hasMore };
 
     } catch (error) {
         console.error('❌ Deals chunk fetch error:', error);
-        return [];
+        return { deals: [], hasMore: false };
     }
 }
 
@@ -1882,12 +1837,14 @@ async function loadMoreDeals() {
 
     try {
         currentOffset += dealsPerLoad;
-        const newDeals = await fetchDealsChunk(currentOffset, dealsPerLoad);
+        const result = await fetchDealsChunk(currentOffset, dealsPerLoad);
+        const newDeals = result.deals || [];
+        const chunkHasMore = result.hasMore || false;
 
         if (newDeals && newDeals.length > 0) {
             currentDeals = [...currentDeals, ...newDeals];
             displayDeals(newDeals, true); // Append new deals
-            hasMoreDeals = newDeals.length === dealsPerLoad;
+            hasMoreDeals = chunkHasMore;
         } else {
             hasMoreDeals = false;
         }
@@ -1944,7 +1901,55 @@ function calculateExpirationDate(dealID) {
 
 // Sample data as fallback
 async function loadSampleDeals() {
-    return [];
+    console.log('Loading frontend sample deals for testing infinite scroll');
+    const sampleGames = [
+        { title: "Cyberpunk 2077", price: 29.99, originalPrice: 59.99, discount: 50, steamAppID: 1091500 },
+        { title: "The Witcher 3: Wild Hunt", price: 9.99, originalPrice: 39.99, discount: 75, steamAppID: 292030 },
+        { title: "Hades", price: 19.99, originalPrice: 24.99, discount: 20, steamAppID: 1145360 },
+        { title: "Stardew Valley", price: 4.99, originalPrice: 14.99, discount: 67, steamAppID: 413150 },
+        { title: "Among Us", price: 3.99, originalPrice: 4.99, discount: 20, steamAppID: 945360 },
+        { title: "Rocket League", price: 19.99, originalPrice: 39.99, discount: 50, steamAppID: 252950 },
+        { title: "Portal 2", price: 9.99, originalPrice: 19.99, discount: 50, steamAppID: 620 },
+        { title: "Half-Life: Alyx", price: 39.99, originalPrice: 59.99, discount: 33, steamAppID: 546560 },
+        { title: "No Man's Sky", price: 29.99, originalPrice: 59.99, discount: 50, steamAppID: 275850 },
+        { title: "Risk of Rain 2", price: 14.99, originalPrice: 24.99, discount: 40, steamAppID: 632360 },
+        { title: "Dead Cells", price: 19.99, originalPrice: 24.99, discount: 20, steamAppID: 588650 },
+        { title: "Hollow Knight", price: 9.99, originalPrice: 14.99, discount: 33, steamAppID: 367520 },
+        { title: "Celeste", price: 9.99, originalPrice: 19.99, discount: 50, steamAppID: 504230 },
+        { title: "Undertale", price: 9.99, originalPrice: 9.99, discount: 0, steamAppID: 391540 },
+        { title: "Ori and the Will of the Wisps", price: 19.99, originalPrice: 29.99, discount: 33, steamAppID: 1057090 },
+        { title: "Loop Hero", price: 14.99, originalPrice: 19.99, discount: 25, steamAppID: 1282730 },
+        { title: "Spiritfarer", price: 19.99, originalPrice: 29.99, discount: 33, steamAppID: 972660 },
+        { title: "Outer Wilds", price: 19.99, originalPrice: 24.99, discount: 20, steamAppID: 753640 },
+        { title: "Katana Zero", price: 9.99, originalPrice: 14.99, discount: 33, steamAppID: 460950 },
+        { title: "Valheim", price: 19.99, originalPrice: 24.99, discount: 20, steamAppID: 892970 },
+        { title: "Hades II", price: 29.99, originalPrice: 39.99, discount: 25, steamAppID: 1145350 },
+        { title: "Baldur's Gate 3", price: 39.99, originalPrice: 59.99, discount: 33, steamAppID: 1086940 },
+        { title: "Elden Ring", price: 39.99, originalPrice: 59.99, discount: 33, steamAppID: 1245620 },
+        { title: "Resident Evil 4", price: 39.99, originalPrice: 59.99, discount: 33, steamAppID: 2050650 },
+        { title: "The Last of Us Part I", price: 39.99, originalPrice: 59.99, discount: 33, steamAppID: 1888930 }
+    ];
+
+    return sampleGames.map((game, index) => ({
+        title: game.title,
+        price: game.price,
+        originalPrice: game.originalPrice,
+        discountPercent: game.discount,
+        discount: game.discount,
+        expirationDate: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
+        type: "sale",
+        store: "Steam",
+        source: "frontend-sample",
+        platform: 'steam',
+        rating: 4.5,
+        storeID: '1',
+        storeName: 'Steam',
+        steamAppID: game.steamAppID,
+        appId: game.steamAppID,
+        id: game.steamAppID,
+        storeUrl: getSteamUrl({ steamAppID: game.steamAppID, title: game.title }),
+        dealUrl: getSteamUrl({ steamAppID: game.steamAppID, title: game.title })
+    }));
 }
 
 // Display deals in the list

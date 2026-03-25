@@ -37,6 +37,74 @@ export default async function handler(req, res) {
         let deals = [...itadDeals, ...cheapsharkDeals];
         console.log(`[API] Combined total: ${deals.length} deals before deduplication`);
 
+        // If no deals from external APIs, use hardcoded sample data as fallback
+        if (deals.length === 0) {
+            console.warn('[API] No deals from external APIs, using hardcoded sample data');
+            deals = [
+                {
+                    title: "Cyberpunk 2077",
+                    steamAppID: 1091500,
+                    salePrice: 29.99,
+                    normalPrice: 59.99,
+                    discount: 50,
+                    expiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
+                    store: "Steam",
+                    type: "sale",
+                    source: "sample",
+                    url: "https://store.steampowered.com/app/1091500"
+                },
+                {
+                    title: "The Witcher 3: Wild Hunt",
+                    steamAppID: 292030,
+                    salePrice: 9.99,
+                    normalPrice: 39.99,
+                    discount: 75,
+                    expiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
+                    store: "Steam",
+                    type: "sale",
+                    source: "sample",
+                    url: "https://store.steampowered.com/app/292030"
+                },
+                {
+                    title: "Hades",
+                    steamAppID: 1145360,
+                    salePrice: 19.99,
+                    normalPrice: 24.99,
+                    discount: 20,
+                    expiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
+                    store: "Steam",
+                    type: "sale",
+                    source: "sample",
+                    url: "https://store.steampowered.com/app/1145360"
+                },
+                {
+                    title: "Stardew Valley",
+                    steamAppID: 413150,
+                    salePrice: 3.99,
+                    normalPrice: 4.99,
+                    discount: 20,
+                    expiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
+                    store: "Steam",
+                    type: "sale",
+                    source: "sample",
+                    url: "https://store.steampowered.com/app/413150"
+                },
+                {
+                    title: "Among Us",
+                    steamAppID: 945360,
+                    salePrice: 3.99,
+                    normalPrice: 4.99,
+                    discount: 20,
+                    expiry: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
+                    store: "Steam",
+                    type: "sale",
+                    source: "sample",
+                    url: "https://store.steampowered.com/app/945360"
+                }
+            ];
+            console.log(`[API] Using ${deals.length} hardcoded sample deals`);
+        }
+
         // Debug mode: include source counts and small samples when ?debug=1
         const debugMode = req.query && (req.query.debug === '1' || req.query.debug === 'true');
         const debugInfo = {
@@ -59,7 +127,7 @@ export default async function handler(req, res) {
         const totalDeals = deals.length;
         const paginatedDeals = deals.slice(offset, offset + limit);
 
-        console.log(`[API] ✅ Returning ${paginatedDeals.length} deals (offset: ${offset}, limit: ${limit}, total: ${totalDeals})`);
+        console.log(`[API] ✅ After processing: ${totalDeals} total deals, returning ${paginatedDeals.length} (offset: ${offset}, limit: ${limit})`);
 
         const responsePayload = {
             success: true,
@@ -100,7 +168,7 @@ async function fetchIsThereAnyDealDeals() {
         const ITAD_API_KEY = process.env.ITAD_API_KEY;
 
         if (!ITAD_API_KEY) {
-            console.warn('[API] ITAD_API_KEY not configured');
+            console.warn('[API] ITAD_API_KEY not configured - skipping ITAD');
             return [];
         }
 
@@ -256,8 +324,10 @@ async function fetchCheapSharkDeals() {
                     });
 
                     if (!response.ok) {
-                        errors.push({ page: pageNumber, status: response.status });
+                        const errorText = await response.text();
+                        errors.push({ page: pageNumber, status: response.status, error: errorText });
                         console.warn(`[API] CheapShark page ${pageNumber} returned ${response.status} (attempt ${attempt + 1})`);
+                        console.warn(`[API] Error details: ${errorText.substring(0, 200)}`);
 
                         if (response.status === 429) {
                             // Rate limited — back off and retry
@@ -272,13 +342,16 @@ async function fetchCheapSharkDeals() {
                     pageData = await response.json();
 
                     if (!Array.isArray(pageData) || pageData.length === 0) {
-                        console.log(`[API] CheapShark page ${pageNumber}: No more deals`);
+                        console.log(`[API] CheapShark page ${pageNumber}: No more deals (empty response)`);
                         pageFetched = false;
                         break; // No more deals to fetch
                     }
 
-                    console.log(`[API] CheapShark page ${pageNumber}: ${pageData.length} deals`);
-                    allDeals = allDeals.concat(pageData);
+                    // Filter to ensure we only get Steam deals (storeID=1)
+                    const steamDeals = pageData.filter(deal => deal.storeID === '1' || deal.storeID === 1);
+                    console.log(`[API] CheapShark page ${pageNumber}: ${pageData.length} total deals, ${steamDeals.length} Steam deals`);
+                    
+                    allDeals = allDeals.concat(steamDeals);
                     pageFetched = true;
                     break;
 
@@ -324,21 +397,10 @@ async function fetchCheapSharkDeals() {
 
             console.log(`[API] CheapShark normalized: ${normalized.length} valid deals`);
 
-            // If nothing was fetched from CheapShark, fall back to local sample file
+            // If nothing was fetched from CheapShark, return empty array (will use main API fallback)
             if (normalized.length === 0) {
-                try {
-                    console.warn('[API] CheapShark returned no deals; attempting to load local sample fallback');
-                    const fs = require('fs');
-                    const path = require('path');
-                    const samplePath = path.resolve(__dirname, '../assets/sample-deals.json');
-                    const sampleRaw = fs.readFileSync(samplePath, 'utf-8');
-                    const sample = JSON.parse(sampleRaw);
-                    console.log(`[API] Loaded ${sample.length} deals from local sample fallback`);
-                    return sample;
-                } catch (err) {
-                    console.error('[API] Failed to load local sample fallback:', err.message);
-                    return [];
-                }
+                console.warn('[API] CheapShark returned no valid deals');
+                return [];
             }
 
             return normalized;

@@ -1,0 +1,122 @@
+[
+  {
+    "title": "Cyberpunk 2077",
+    "steamAppID": 1091500,
+    "salePrice": 29.99,
+    "normalPrice": 59.99,
+    "discount": 50,
+    "expiry": 1735689600,
+    "store": "Steam",
+    "type": "sale",
+    "source": "sample",
+    "url": "https://store.steampowered.com/app/1091500"
+  },
+  {
+    "title": "The Witcher 3: Wild Hunt",
+    "steamAppID": 292030,
+    "salePrice": 9.99,
+    "normalPrice": 39.99,
+    "discount": 75,
+    "expiry": 1735689600,
+    "store": "Steam",
+    "type": "sale",
+    "source": "sample",
+    "url": "https://store.steampowered.com/app/292030"
+  },
+  {
+    "title": "Hades",
+    "steamAppID": 1145360,
+    "salePrice": 19.99,
+    "normalPrice": 24.99,
+    "discount": 20,
+    "expiry": 1735689600,
+    "store": "Steam",
+    "type": "sale",
+    "source": "sample",
+    "url": "https://store.steampowered.com/app/1145360"
+  },
+  {
+    "title": "Stardew Valley",
+    "steamAppID": 413150,
+    "salePrice": 3.99,
+    "normalPrice": 4.99,
+    "discount": 20,
+    "expiry": 1735689600,
+    "store": "Steam",
+    "type": "sale",
+    "source": "sample",
+    "url": "https://store.steampowered.com/app/413150"
+  },
+  {
+    "title": "Among Us",
+    "steamAppID": 945360,
+    "salePrice": 3.99,
+    "normalPrice": 4.99,
+    "discount": 20,
+    "expiry": 1735689600,
+    "store": "Steam",
+    "type": "sale",
+    "source": "sample",
+    "url": "https://store.steampowered.com/app/945360"
+  },
+  {
+    "title": "Rocket League",
+    "steamAppID": 252950,
+    "salePrice": 15.99,
+    "normalPrice": 19.99,
+    "discount": 20,
+    "expiry": 1735689600,
+    "store": "Steam",
+    "type": "sale",
+    "source": "sample",
+    "url": "https://store.steampowered.com/app/252950"
+  },
+  {
+    "title": "Portal 2",
+    "steamAppID": 620,
+    "salePrice": 7.99,
+    "normalPrice": 9.99,
+    "discount": 20,
+    "expiry": 1735689600,
+    "store": "Steam",
+    "type": "sale",
+    "source": "sample",
+    "url": "https://store.steampowered.com/app/620"
+  },
+  {
+    "title": "Terraria",
+    "steamAppID": 105600,
+    "salePrice": 3.99,
+    "normalPrice": 9.99,
+    "discount": 60,
+    "expiry": 1735689600,
+    "store": "Steam",
+    "type": "sale",
+    "source": "sample",
+    "url": "https://store.steampowered.com/app/105600"
+  },
+  {
+    "title": "Undertale",
+    "steamAppID": 391540,
+    "salePrice": 3.99,
+    "normalPrice": 9.99,
+    "discount": 60,
+    "expiry": 1735689600,
+    "store": "Steam",
+    "type": "sale",
+    "source": "sample",
+    "url": "https://store.steampowered.com/app/391540"
+  },
+  {
+    "title": "Hollow Knight",
+    "steamAppID": 367520,
+    "salePrice": 7.99,
+    "normalPrice": 14.99,
+    "discount": 47,
+    "expiry": 1735689600,
+    "store": "Steam",
+    "type": "sale",
+    "source": "sample",
+    "url": "https://store.steampowered.com/app/367520"
+  }
+]
