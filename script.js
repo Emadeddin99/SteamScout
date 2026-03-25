@@ -1692,7 +1692,7 @@ async function loadDeals(forceRefresh = false) {
         
         // If API fails, fall back to sample data
         if (!deals || deals.length === 0) {
-            console.log('API failed, using sample data');
+            console.log('API failed or returned no deals, using sample data');
             deals = await loadSampleDeals();
         }
         
@@ -1708,7 +1708,13 @@ async function loadDeals(forceRefresh = false) {
             
             // Keep deals where: price < original AND discount > 0
             // Also filter out absurdly high prices (max $1000)
-            return salePrice < normalPrice && discount > 0 && salePrice < 1000 && normalPrice < 1000;
+            const valid = salePrice < normalPrice && discount > 0 && salePrice < 1000 && normalPrice < 1000;
+            
+            if (!valid) {
+                console.log(`Filtered out invalid deal: "${d.title}" - price: ${salePrice}, original: ${normalPrice}, discount: ${discount}`);
+            }
+            
+            return valid;
         });
         console.log(`Filtered deals: ${deals.length} deals after removing fake discounts and invalid prices`);
         
@@ -1753,19 +1759,30 @@ async function fetchDealsWithCredentials() {
     try {
         console.log('📡 Fetching deals via serverless API...');
 
+        const startTime = Date.now();
         const response = await fetch('/api/deals');
 
         if (!response.ok) {
-            throw new Error(`API returned ${response.status}`);
+            throw new Error(`API returned ${response.status}: ${response.statusText}`);
         }
 
         const apiResponse = await response.json();
+        const fetchTime = Date.now() - startTime;
+        console.log(`⏱️ API request took ${fetchTime}ms`);
+
+        console.log('📦 API Response:', {
+            success: apiResponse.success,
+            count: apiResponse.count,
+            total: apiResponse.total,
+            dealsLength: apiResponse.deals ? apiResponse.deals.length : 'undefined',
+            hasDeals: apiResponse.deals ? 'yes' : 'no'
+        });
 
         if (!apiResponse.success) {
             throw new Error(apiResponse.error || 'API returned error');
         }
 
-        console.log(`✅ Loaded ${apiResponse.count} deals`);
+        console.log(`✅ Loaded ${apiResponse.count} deals (total: ${apiResponse.total || 'undefined'})`);
 
         if (!apiResponse.deals || apiResponse.deals.length === 0) {
             console.log('⚠️ No deals available, showing sample deals');
@@ -1775,6 +1792,15 @@ async function fetchDealsWithCredentials() {
             );
             return [];
         }
+
+        // Log first few deals for debugging
+        console.log('🔍 First 3 deals from API:', apiResponse.deals.slice(0, 3).map(d => ({
+            title: d.title,
+            salePrice: d.salePrice,
+            normalPrice: d.normalPrice,
+            discount: d.discount,
+            steamAppID: d.steamAppID
+        })));
 
         // Transform API response to client-side format
         return apiResponse.deals.map(deal => {
@@ -1904,7 +1930,7 @@ async function fetchSteamStoreDeals() {
                 storeID: '1'
             };
         });
-        
+            
         console.log('Returning', deals.length, 'Steam deals after filtering');
         return deals;
         
@@ -1953,7 +1979,74 @@ function calculateExpirationDate(dealID) {
 
 // Sample data as fallback
 async function loadSampleDeals() {
-    return [];
+    console.log('📦 Loading sample deals as fallback...');
+    
+    // Sample deals for when API is unavailable
+    const sampleDeals = [
+        {
+            title: "Half-Life 2",
+            price: 1.99,
+            originalPrice: 9.99,
+            discountPercent: 80,
+            discount: 80,
+            expirationDate: null,
+            type: "sale",
+            store: "Steam",
+            source: "sample",
+            platform: "steam",
+            rating: 4.5,
+            storeID: "1",
+            storeName: "Steam",
+            steamAppID: 220,
+            appId: 220,
+            id: 220,
+            storeUrl: "https://store.steampowered.com/app/220",
+            dealUrl: "https://store.steampowered.com/app/220"
+        },
+        {
+            title: "Portal 2",
+            price: 2.99,
+            originalPrice: 9.99,
+            discountPercent: 70,
+            discount: 70,
+            expirationDate: null,
+            type: "sale",
+            store: "Steam",
+            source: "sample",
+            platform: "steam",
+            rating: 4.8,
+            storeID: "1",
+            storeName: "Steam",
+            steamAppID: 620,
+            appId: 620,
+            id: 620,
+            storeUrl: "https://store.steampowered.com/app/620",
+            dealUrl: "https://store.steampowered.com/app/620"
+        },
+        {
+            title: "The Witcher 3: Wild Hunt",
+            price: 9.99,
+            originalPrice: 39.99,
+            discountPercent: 75,
+            discount: 75,
+            expirationDate: null,
+            type: "sale",
+            store: "Steam",
+            source: "sample",
+            platform: "steam",
+            rating: 4.9,
+            storeID: "1",
+            storeName: "Steam",
+            steamAppID: 292030,
+            appId: 292030,
+            id: 292030,
+            storeUrl: "https://store.steampowered.com/app/292030",
+            dealUrl: "https://store.steampowered.com/app/292030"
+        }
+    ];
+    
+    console.log(`📦 Loaded ${sampleDeals.length} sample deals`);
+    return sampleDeals;
 }
 
 // Display deals in the list
