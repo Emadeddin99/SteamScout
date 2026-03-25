@@ -17,18 +17,11 @@ export default async function handler(req, res) {
         return;
     }
 
-    console.log('[API] Starting deals fetch at', new Date().toISOString());
-    
-    // Handle pagination parameters
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 50;
-    const offset = (page - 1) * limit;
-    
-    console.log(`[API] Pagination: page ${page}, limit ${limit}, offset ${offset}`);
-    
     try {
+        console.log('[API] Starting deals fetch...');
+        
         // Fetch from both sources
-        console.log('[API] Fetching from ITAD and CheapShark...');
+        console.log('[API] Fetching from both ITAD and CheapShark...');
         const [itadDeals, cheapsharkDeals] = await Promise.all([
             fetchIsThereAnyDealDeals(),
             fetchCheapSharkDeals()
@@ -51,12 +44,10 @@ export default async function handler(req, res) {
 
         // Deduplicate deals by steamAppID, keeping best discount
         deals = deduplicateDeals(deals);
-        console.log(`[API] After deduplication: ${deals.length} unique deals`);
         
         // Filter invalid deals
         deals = filterValidDeals(deals);
-        console.log(`[API] After filtering: ${deals.length} valid deals`);
-
+        
         // Sort by discount descending, limit to 3000
         deals = deals
             .sort((a, b) => b.discount - a.discount)
@@ -64,25 +55,10 @@ export default async function handler(req, res) {
 
         console.log(`[API] ✅ Returning ${deals.length} deals`);
 
-        // If no deals at all, return some hardcoded sample deals as last resort
-        if (deals.length === 0) {
-            console.warn('[API] No deals from any source, returning hardcoded samples');
-            deals = getHardcodedSampleDeals();
-        }
-
-        // Apply pagination
-        const totalDeals = deals.length;
-        const paginatedDeals = deals.slice(offset, offset + limit);
-        
-        console.log(`[API] Pagination: returning ${paginatedDeals.length} deals (offset ${offset}, limit ${limit}) out of ${totalDeals} total`);
-
         const responsePayload = {
             success: true,
-            count: paginatedDeals.length,
-            total: totalDeals, // Total deals available
-            page: page,
-            limit: limit,
-            deals: paginatedDeals,
+            count: deals.length,
+            deals,
             timestamp: new Date().toISOString()
         };
 
@@ -98,11 +74,9 @@ export default async function handler(req, res) {
             success: false,
             error: error.message || 'Failed to fetch deals',
             count: 0,
-            total: 0,
             deals: []
         });
     }
-}
 }
 
 /**
@@ -113,24 +87,21 @@ async function fetchIsThereAnyDealDeals() {
     try {
         console.log('[API] Fetching from IsThereAnyDeal (v01)...');
 
-        const ITAD_API_KEY = process.env.ITAD_API_KEY || process.env.ISTHEREANYDEAL_API_KEY;
+        const ITAD_API_KEY = process.env.ITAD_API_KEY;
 
         if (!ITAD_API_KEY) {
-            console.warn('[API] ITAD_API_KEY not configured - skipping ITAD');
+            console.warn('[API] ITAD_API_KEY not configured');
             return [];
         }
 
         // ITAD v01 endpoint for current deals
         const url = `https://api.isthereanydeal.com/v01/deals/list/?key=${ITAD_API_KEY}&country=US&shops=steam&limit=1500&sort=discount`;
         
-        console.log('[API] ITAD URL:', url.replace(ITAD_API_KEY, '[REDACTED]'));
-        
         const response = await fetch(url, {
             headers: {
                 'User-Agent': 'SteamScout/1.0',
                 'Accept': 'application/json'
-            },
-            timeout: 10000 // 10 second timeout
+            }
         });
 
         if (!response.ok) {
@@ -166,7 +137,6 @@ async function fetchIsThereAnyDealDeals() {
 
     } catch (error) {
         console.error('[API] ITAD fetch error:', error.message);
-        console.log('[API] Continuing without ITAD deals');
         return [];
     }
 }
@@ -243,11 +213,11 @@ function getSteamUrl(deal) {
  */
 async function fetchCheapSharkDeals() {
     try {
-        console.log('[API] Fetching from CheapShark (primary source) with retries...');
+        console.log('[API] Fetching from CheapShark (fallback) with retries...');
 
         let allDeals = [];
         const pageSize = 100;
-        const maxPages = 5; // Reduced from 30 to 5 for faster loading (500 deals instead of 3000)
+        const maxPages = 30; // 30 pages * 100 deals = 3000 deals
         const maxAttemptsPerPage = 3; // retry up to 3 times per page
         const errors = [];
         let attempts = 0;
@@ -268,17 +238,17 @@ async function fetchCheapSharkDeals() {
                 const url = `https://www.cheapshark.com/api/1.0/deals?storeID=1&pageNumber=${pageNumber}&pageSize=${pageSize}&sortBy=Deal Rating`;
 
                 try {
-                    console.log(`[API] CheapShark page ${pageNumber} attempt ${attempt + 1}`);
                     const response = await fetch(url, {
                         headers: {
                             'User-Agent': 'SteamScout/1.0'
-                        }
+                        },
+                        // 10s timeout simulated by AbortController if needed in future
                     });
 
                     if (!response.ok) {
                         errors.push({ page: pageNumber, status: response.status });
                         console.warn(`[API] CheapShark page ${pageNumber} returned ${response.status} (attempt ${attempt + 1})`);
-                        
+
                         if (response.status === 429) {
                             // Rate limited — back off and retry
                             await backoff(attempt);
@@ -326,18 +296,13 @@ async function fetchCheapSharkDeals() {
 
         console.log(`[API] CheapShark total fetched: ${allDeals.length} deals across all pages (attempts: ${attempts})`);
 
-        if (allDeals.length === 0) {
-            console.error('[API] CheapShark returned no deals at all - this is unexpected');
-            return [];
-        }
-
         try {
             const normalized = allDeals
                 .map((deal, idx) => {
                     try {
                         const result = normalizeCheapSharkDeal(deal);
                         if (!result) {
-                            console.log(`[API]   Deal ${idx}: Skipped "${deal.title}" (storeID: ${deal.storeID}, steamAppID: ${deal.steamAppID})`);
+                            console.log(`[API]   Deal ${idx}: Skipped "${deal.title}" (storeID: ${deal.storeID})`);
                         }
                         return result;
                     } catch (err) {
@@ -348,7 +313,25 @@ async function fetchCheapSharkDeals() {
                 .filter(d => d !== null);
 
             console.log(`[API] CheapShark normalized: ${normalized.length} valid deals`);
-            return normalized; // ✅ FIXED: Return the normalized deals
+
+            // If nothing was fetched from CheapShark, fall back to local sample file
+            if (normalized.length === 0) {
+                try {
+                    console.warn('[API] CheapShark returned no deals; attempting to load local sample fallback');
+                    const fs = require('fs');
+                    const path = require('path');
+                    const samplePath = path.resolve(__dirname, '../assets/sample-deals.json');
+                    const sampleRaw = fs.readFileSync(samplePath, 'utf-8');
+                    const sample = JSON.parse(sampleRaw);
+                    console.log(`[API] Loaded ${sample.length} deals from local sample fallback`);
+                    return sample;
+                } catch (err) {
+                    console.error('[API] Failed to load local sample fallback:', err.message);
+                    return [];
+                }
+            }
+
+            return normalized;
         } catch (err) {
             console.error('[API] Error during CheapShark mapping:', err.message);
             return [];
@@ -442,52 +425,6 @@ function deduplicateDeals(deals) {
 }
 
 /**
- * Get hardcoded sample deals as last resort fallback
- * @returns {Array} Sample deals
- */
-function getHardcodedSampleDeals() {
-    const now = Math.floor(Date.now() / 1000);
-    return [
-        {
-            title: "Half-Life 2",
-            steamAppID: 220,
-            salePrice: 1.99,
-            normalPrice: 9.99,
-            discount: 80,
-            expiry: now + (7 * 24 * 60 * 60), // 7 days
-            store: 'Steam',
-            type: 'sale',
-            source: 'fallback',
-            url: 'https://store.steampowered.com/app/220'
-        },
-        {
-            title: "Portal 2",
-            steamAppID: 620,
-            salePrice: 2.99,
-            normalPrice: 9.99,
-            discount: 70,
-            expiry: now + (7 * 24 * 60 * 60),
-            store: 'Steam',
-            type: 'sale',
-            source: 'fallback',
-            url: 'https://store.steampowered.com/app/620'
-        },
-        {
-            title: "The Witcher 3: Wild Hunt",
-            steamAppID: 292030,
-            salePrice: 9.99,
-            normalPrice: 39.99,
-            discount: 75,
-            expiry: now + (14 * 24 * 60 * 60),
-            store: 'Steam',
-            type: 'sale',
-            source: 'fallback',
-            url: 'https://store.steampowered.com/app/292030'
-        }
-    ];
-}
-
-/**
  * Filter invalid deals
  * Removes deals where:
  * - salePrice >= normalPrice (no real discount)
@@ -497,34 +434,19 @@ function getHardcodedSampleDeals() {
  * @returns {Array} Filtered deals
  */
 function filterValidDeals(deals) {
-    const filtered = deals.filter(d => {
+    return deals.filter(d => {
         // Must have a discount
-        if (d.discount <= 0) {
-            console.log(`[API] Filtered out deal with no discount: "${d.title}" (${d.discount})`);
-            return false;
-        }
+        if (d.discount <= 0) return false;
 
         // Sale price must be less than normal price
-        if (d.salePrice >= d.normalPrice) {
-            console.log(`[API] Filtered out deal where sale >= normal: "${d.title}" (${d.salePrice} >= ${d.normalPrice})`);
-            return false;
-        }
+        if (d.salePrice >= d.normalPrice) return false;
 
         // Must have title and Steam ID
-        if (!d.title || !d.steamAppID) {
-            console.log(`[API] Filtered out deal missing title or steamAppID: "${d.title}" (steamAppID: ${d.steamAppID})`);
-            return false;
-        }
+        if (!d.title || !d.steamAppID) return false;
 
         // Expiry must be valid if present (positive Unix timestamp)
-        if (d.expiry && d.expiry <= 0) {
-            console.log(`[API] Filtered out deal with invalid expiry: "${d.title}" (${d.expiry})`);
-            return false;
-        }
+        if (d.expiry && d.expiry <= 0) return false;
 
         return true;
     });
-    
-    console.log(`[API] Filtered ${deals.length} → ${filtered.length} valid deals`);
-    return filtered;
 }
