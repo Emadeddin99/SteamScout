@@ -348,6 +348,7 @@ async function fetchCheapSharkDeals() {
                 .filter(d => d !== null);
 
             console.log(`[API] CheapShark normalized: ${normalized.length} valid deals`);
+            return normalized; // ✅ FIXED: Return the normalized deals
         } catch (err) {
             console.error('[API] Error during CheapShark mapping:', err.message);
             return [];
@@ -485,6 +486,17 @@ function getHardcodedSampleDeals() {
         }
     ];
 }
+
+/**
+ * Filter invalid deals
+ * Removes deals where:
+ * - salePrice >= normalPrice (no real discount)
+ * - discount <= 0 (no discount)
+ * - missing required fields
+ * @param {Array} deals - Array of normalized deals
+ * @returns {Array} Filtered deals
+ */
+function filterValidDeals(deals) {
     const filtered = deals.filter(d => {
         // Must have a discount
         if (d.discount <= 0) {
