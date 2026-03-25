@@ -10,17 +10,8 @@ let deals = []; // Initialize deals array to prevent ReferenceError
 
 // Deals variables
 let currentDeals = [];
-let displayedDeals = []; // Track currently displayed deals
+let displayedDeals = []; // Track currently displayed deals (for pagination)
 let dealsLoading = false;
-let isLoadingMore = false; // Flag for loading more deals
-let hasMoreDeals = true; // Flag to track if there are more deals to load
-let currentOffset = 0; // Current offset for API pagination
-let currentPage = 1; // Track current page number
-let totalPages = 1; // Total number of pages from API
-const dealsPerLoad = 30; // Number of deals to load per request
-
-// Intersection Observer for infinite scroll
-let dealsObserver = null;
 
 // Cache for deals data
 let dealsCache = {
@@ -33,6 +24,10 @@ let dealsCache = {
 let gameSearchCache = [];
 let searchTimeout = null;
 let currentGameSuggestions = []; // Store current suggestions for Enter key display
+
+// Pagination
+let currentPage = 1;
+const dealsPerPage = 12;
 
 
 
@@ -1668,236 +1663,255 @@ function clearGameSearch() {
 // Load deals with real API
 async function loadDeals(forceRefresh = false) {
     if (dealsLoading) return;
-
+    
     dealsLoading = true;
     const dealsList = document.getElementById('dealsList');
-
-    // Show skeleton loading for initial load
-    if (currentOffset === 0) {
-        dealsList.innerHTML = generateSkeletonLoaders(6);
-    }
-
+    dealsList.innerHTML = `
+        <div class="loading-deals">
+            <div class="spinner"></div>
+            <p>Loading current deals...</p>
+        </div>
+    `;
+    
     try {
-        // Check cache first for initial load
+        // Check cache first
         const now = Date.now();
-        if (!forceRefresh && currentOffset === 0 && dealsCache.data.length > 0 &&
+        if (!forceRefresh && dealsCache.data.length > 0 && 
             (now - dealsCache.timestamp) < dealsCache.ttl) {
             currentDeals = dealsCache.data;
-            displayDeals(currentDeals, false);
+            displayDeals(currentDeals);
             sortDeals(document.getElementById('dealsSort').value);
             showNotification("Deals loaded from cache!", "success");
-            initializeInfiniteScroll();
             return;
         }
-
-        console.log(`Fetching deals chunk: offset=${currentOffset}, limit=${dealsPerLoad}`);
-
-        // Fetch deals with pagination
-        const result = await fetchDealsChunk(currentOffset, dealsPerLoad, forceRefresh);
-        const deals = result.deals || [];
-        const chunkHasMore = result.hasMore || false;
-
-        console.log(`Received ${deals.length} deals from API`);
-
+        
+        console.log('Fetching fresh deals data...');
+        
+        // Try to use real API with your credentials
+        let deals = await fetchDealsWithCredentials();
+        
+        // If API fails, fall back to sample data
         if (!deals || deals.length === 0) {
-            if (currentOffset === 0) {
-                dealsList.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-search"></i>
-                        <p>No deals found right now.</p>
-                        <p class="subtext">Try refreshing or check back later.</p>
-                    </div>
-                `;
-                hasMoreDeals = false;
-                currentDeals = [];
-            } else {
-                hasMoreDeals = false;
-            }
-        } else {
-            // For initial load, replace; for subsequent loads, append
-            if (currentOffset === 0) {
-                currentDeals = deals;
-            } else {
-                currentDeals = [...currentDeals, ...deals];
-            }
-
-            // Update cache on initial load
-            if (currentOffset === 0) {
-                dealsCache = {
-                    data: currentDeals,
-                    timestamp: now,
-                    ttl: 3600000
-                };
-            }
-
-            hasMoreDeals = chunkHasMore; // Use the hasMore flag from the API
+            console.log('API failed, using sample data');
+            deals = await loadSampleDeals();
         }
-
-
-        displayDeals(currentDeals, currentOffset > 0); // Pass append flag
-
-        // Apply current sort
-        if (currentOffset === 0) {
-            sortDeals(document.getElementById('dealsSort').value);
+        
+        // Remove duplicate deals and keep the best discount
+        deals = dedupeDeals(deals);
+        console.log(`Deduped deals: ${deals.length} unique deals after removing duplicates`);
+        
+        // Filter out fake/stale discounts - ensure actual price is less than original
+        deals = deals.filter(d => {
+            const salePrice = d.price || 0;
+            const normalPrice = d.originalPrice || d.normalPrice || 0;
+            const discount = d.discountPercent || d.discount || 0;
+            
+            // Keep deals where: price < original AND discount > 0
+            // Also filter out absurdly high prices (max $1000)
+            return salePrice < normalPrice && discount > 0 && salePrice < 1000 && normalPrice < 1000;
+        });
+        console.log(`Filtered deals: ${deals.length} deals after removing fake discounts and invalid prices`);
+        
+        // Cache the results
+        currentDeals = deals;
+        dealsCache = {
+            data: deals,
+            timestamp: now,
+            ttl: 3600000
+        };
+        
+        displayDeals(deals);
+        
+        // Reapply current filter after displaying deals
+        const activeFilterBtn = document.querySelector('.deals-filter-btn.active');
+        if (activeFilterBtn) {
+            const platform = activeFilterBtn.dataset.platform;
+            filterDeals(platform);
         }
-
-        // Initialize infinite scroll on first load
-        if (currentOffset === 0) {
-            initializeInfiniteScroll();
-        }
-
-        if (currentOffset === 0) {
-            showNotification(`Loaded ${currentDeals.length} deals!`, "success");
-        }
-
+        
+        sortDeals(document.getElementById('dealsSort').value);
+        
+        showNotification(`Loaded ${deals.length} current deals!`, "success");
+        
     } catch (error) {
         console.error('Error loading deals:', error);
-        if (currentOffset === 0) {
-            dealsList.innerHTML = `
-                <div class="empty-history">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <p>Failed to load deals</p>
-                    <p class="subtext">${error.message || 'Please try again later'}</p>
-                </div>
-            `;
-        }
-        hasMoreDeals = false;
-        updatePaginationInfo();
+        dealsList.innerHTML = `
+            <div class="empty-history">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Failed to load deals</p>
+                <p class="subtext">${error.message || 'Please try again later'}</p>
+            </div>
+        `;
         showNotification("Failed to load deals", "danger");
     } finally {
         dealsLoading = false;
-        isLoadingMore = false;
     }
 }
 
-// Fetch real deals from Steam using serverless API (CORS-safe)
-async function fetchDealsChunk(offset, limit, forceRefresh = false) {
+// Fetch real deals from Steam, Epic Games using serverless API (CORS-safe)
+async function fetchDealsWithCredentials() {
     try {
-        console.log('📡 Fetching deals chunk via API...');
+        console.log('📡 Fetching deals via serverless API...');
 
-        const url = `/api/deals?offset=${offset}&limit=${limit}&forceRefresh=${forceRefresh ? 1 : 0}`;
-        const response = await fetch(url);
+        const response = await fetch('/api/deals');
 
         if (!response.ok) {
-            throw new Error(`API returned status ${response.status}`);
+            throw new Error(`API returned ${response.status}`);
         }
 
         const apiResponse = await response.json();
 
         if (!apiResponse.success) {
-            throw new Error(apiResponse.error || 'API returned failure');
+            throw new Error(apiResponse.error || 'API returned error');
         }
 
-        const deals = Array.isArray(apiResponse.deals) ? apiResponse.deals : [];
-        const hasMore = Boolean(apiResponse.hasMore) || ((offset + limit) < (apiResponse.total || 0));
-        totalPages = apiResponse.total ? Math.max(1, Math.ceil(apiResponse.total / dealsPerLoad)) : 1;
-        currentPage = Math.floor(offset / dealsPerLoad) + 1;
+        console.log(`✅ Loaded ${apiResponse.count} deals`);
 
-        console.log(`✅ API chunk: ${deals.length} deals, hasMore=${hasMore}, page=${currentPage}/${totalPages}`);
+        if (!apiResponse.deals || apiResponse.deals.length === 0) {
+            console.log('⚠️ No deals available, showing sample deals');
+            showNotification(
+                'No deals available at the moment',
+                'warning'
+            );
+            return [];
+        }
 
-        updatePaginationInfo();
-
-        return { deals, hasMore };
-
-    } catch (error) {
-        console.error('❌ Deals chunk fetch error:', error);
-        hasMoreDeals = false;
-        updatePaginationInfo();
-        return { deals: [], hasMore: false };
-    }
-}
-
-// Initialize infinite scroll with IntersectionObserver
-function initializeInfiniteScroll() {
-    if (dealsObserver) {
-        dealsObserver.disconnect();
-    }
-
-    const dealsList = document.getElementById('dealsList');
-
-    // Create a sentinel element at the bottom
-    const sentinel = document.createElement('div');
-    sentinel.id = 'deals-sentinel';
-    sentinel.style.height = '20px';
-    sentinel.style.width = '100%';
-    dealsList.appendChild(sentinel);
-
-    dealsObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting && hasMoreDeals && !isLoadingMore && !dealsLoading) {
-                loadMoreDeals();
+        // Transform API response to client-side format
+        return apiResponse.deals.map(deal => {
+            // Ensure prices are in dollars, not cents
+            // If price > 100, it's likely in cents (e.g., 4990 cents = $49.90)
+            let salePrice = parseFloat(deal.salePrice) || 0;
+            let normalPrice = parseFloat(deal.normalPrice) || 0;
+            
+            if (salePrice > 100) {
+                salePrice = salePrice / 100;
             }
+            if (normalPrice > 100) {
+                normalPrice = normalPrice / 100;
+            }
+            
+            return {
+                // Normalized from API
+                title: deal.title,
+                price: salePrice,
+                originalPrice: normalPrice,
+                discountPercent: deal.discount,
+                discount: deal.discount,
+                expirationDate: deal.expiry, // Unix timestamp (seconds) - will be handled by getExpiryText
+                type: deal.type,
+                store: deal.store,
+                source: deal.source,
+                
+                // Derived data
+                platform: 'steam',
+                rating: 4.5,
+                storeID: '1',
+                storeName: 'Steam',
+                
+                // IDs
+                steamAppID: deal.steamAppID,
+                appId: deal.steamAppID,
+                id: deal.steamAppID,
+                
+                // URLs - use getSteamUrl function
+                storeUrl: getSteamUrl({ steamAppID: deal.steamAppID, title: deal.title }),
+                dealUrl: getSteamUrl({ steamAppID: deal.steamAppID, title: deal.title })
+            };
         });
-    }, {
-        rootMargin: '100px' // Start loading 100px before the sentinel is visible
-    });
-
-    dealsObserver.observe(sentinel);
-}
-
-// Load more deals for infinite scroll
-async function loadMoreDeals() {
-    if (isLoadingMore || !hasMoreDeals) return;
-
-    isLoadingMore = true;
-    console.log('Loading more deals...');
-
-    // Add loading indicator before the sentinel
-    const dealsList = document.getElementById('dealsList');
-    const sentinel = document.getElementById('deals-sentinel');
-    const loadingIndicator = document.createElement('div');
-    loadingIndicator.id = 'loading-more';
-    loadingIndicator.className = 'loading-more';
-    loadingIndicator.innerHTML = `
-        <div class="spinner"></div>
-        <p>Loading more deals...</p>
-    `;
-    
-    if (sentinel) {
-        sentinel.insertAdjacentElement('beforebegin', loadingIndicator);
-    } else {
-        dealsList.appendChild(loadingIndicator);
-    }
-
-    try {
-        currentOffset += dealsPerLoad;
-        const result = await fetchDealsChunk(currentOffset, dealsPerLoad);
-        const newDeals = result.deals || [];
-        const chunkHasMore = result.hasMore || false;
-
-        if (newDeals && newDeals.length > 0) {
-            currentDeals = [...currentDeals, ...newDeals];
-            displayDeals(newDeals, true); // Append new deals
-            hasMoreDeals = chunkHasMore;
-        } else {
-            hasMoreDeals = false;
-        }
 
     } catch (error) {
-        console.error('Error loading more deals:', error);
-        hasMoreDeals = false;
-    } finally {
-        // Remove loading indicator
-        const indicator = document.getElementById('loading-more');
-        if (indicator) {
-            indicator.remove();
-        }
-        isLoadingMore = false;
+        console.error('❌ Deals fetch error:', error);
+        console.log('⚠️ Falling back to empty deals');
+        return [];
     }
 }
 
-function updatePaginationInfo() {
-    const paginationInfo = document.getElementById('paginationInfo');
-    if (!paginationInfo) return;
-
-    if (!hasMoreDeals && currentPage === 1 && totalPages === 1) {
-        // Hide on initial empty/no-more state if no valid pagination
-        paginationInfo.style.display = 'none';
-        return;
+// Fetch Steam store featured games/deals
+async function fetchSteamStoreDeals() {
+    try {
+        const steamFeaturedUrl = 'https://store.steampowered.com/api/featured/';
+        const response = await corsProxyFetch(steamFeaturedUrl);
+        
+        if (!response.ok) {
+            console.warn('Steam API returned:', response.status);
+            return [];
+        }
+        
+        const data = await response.json();
+        console.log('Steam API response:', data);
+        
+        // Handle different Steam API response formats
+        let games = [];
+        
+        // Try different possible data structures
+        if (data.featured_win && Array.isArray(data.featured_win)) {
+            games = data.featured_win;
+            console.log('Using featured_win format, found', games.length, 'games');
+        } else if (data.featured && Array.isArray(data.featured)) {
+            games = data.featured;
+            console.log('Using featured format, found', games.length, 'games');
+        } else if (data.specials && Array.isArray(data.specials)) {
+            games = data.specials;
+            console.log('Using specials format, found', games.length, 'games');
+        } else if (Array.isArray(data)) {
+            games = data;
+            console.log('Using array format, found', games.length, 'games');
+        } else {
+            console.warn('Unknown Steam API format:', Object.keys(data));
+            return [];
+        }
+        
+        if (!Array.isArray(games) || games.length === 0) {
+            console.warn('No games found in Steam API response');
+            return [];
+        }
+        
+        console.log('Processing', games.length, 'Steam games for deals');
+        
+        // Transform Steam data to our format
+        const deals = games.slice(0, 50).filter(game => {
+            // Filter for games that are actually on sale with discount
+            const hasDiscount = game && game.id && game.name && 
+                               game.discount_percent && game.discount_percent > 0 &&
+                               game.original_price && game.original_price > 0;
+            return hasDiscount;
+        }).map(game => {
+            const finalPrice = game.final_price || (game.original_price * (1 - game.discount_percent / 100));
+            
+            // Apply FIX 1: Check for real discount
+            let discountPercent = game.discount_percent || 0;
+            if (!hasRealSteamDiscount({ steamPrice: { initial: game.original_price, final: finalPrice } })) {
+                discountPercent = 0;
+            }
+            
+            return {
+                id: game.id,
+                title: game.name,
+                price: finalPrice / 100,
+                originalPrice: game.original_price / 100,
+                discount: discountPercent,
+                discountPercent: discountPercent,
+                platform: 'steam',
+                rating: 4.5,
+                metacriticScore: 80,
+                thumb: game.header_image || '',
+                storeUrl: getSteamUrl({ id: game.id, title: game.name }),
+                dealUrl: getSteamUrl({ id: game.id, title: game.name }),
+                releaseDate: 2020,
+                expirationDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+                dealRating: 8.0,
+                storeName: 'Steam',
+                storeID: '1'
+            };
+        });
+        
+        console.log('Returning', deals.length, 'Steam deals after filtering');
+        return deals;
+        
+    } catch (error) {
+        console.warn('Steam fetch error:', error);
+        return [];
     }
-
-    paginationInfo.textContent = `Page ${currentPage} of ${totalPages}`;
-    paginationInfo.style.display = 'block';
 }
 
 // fetchEpicGamesDeals removed in Steam-only build (Epic support not included)
@@ -1937,38 +1951,42 @@ function calculateExpirationDate(dealID) {
     return expirationDate;
 }
 
-// Sample data fallback removed in production mode. API should provide deals now.
+// Sample data as fallback
 async function loadSampleDeals() {
-    console.warn('loadSampleDeals called: sample deal mode is disabled.');
     return [];
 }
 
 // Display deals in the list
-function displayDeals(deals, append = false) {
+function displayDeals(deals, resetPage = true) {
     const dealsList = document.getElementById('dealsList');
-
+    
     if (!deals || deals.length === 0) {
-        if (!append) {
-            dealsList.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-search"></i>
-                    <p>No deals found</p>
-                    <p class="subtext">Try refreshing or adjusting your search</p>
-                </div>
-            `;
-        }
+        dealsList.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-search"></i>
+                <p>No deals found</p>
+                <p class="subtext">Try refreshing or adjusting your search</p>
+            </div>
+        `;
         return;
     }
-
-    // Store currently displayed deals
-    if (!append) {
-        displayedDeals = deals;
-    } else {
-        displayedDeals = [...displayedDeals, ...deals];
+    
+    // Store currently displayed deals for pagination
+    displayedDeals = deals;
+    
+    // Reset to page 1 only when displaying new deals (not when just changing pages)
+    if (resetPage) {
+        currentPage = 1;
     }
-
+    
+    // Calculate pagination
+    const totalPages = Math.ceil(deals.length / dealsPerPage);
+    const startIndex = (currentPage - 1) * dealsPerPage;
+    const endIndex = startIndex + dealsPerPage;
+    const paginatedDeals = deals.slice(startIndex, endIndex);
+    
     // Create deals HTML
-    let dealsHTML = deals.map(deal => {
+    let dealsHTML = paginatedDeals.map(deal => {
         return `
             <div class="deal-card">
                 <div class="deal-header">
@@ -1978,7 +1996,7 @@ function displayDeals(deals, append = false) {
                         ${deal.rating ? `<span class="badge">⭐ ${deal.rating}</span>` : ''}
                     </div>
                 </div>
-
+                
                 <div class="deal-body">
                     <div class="deal-prices">
                         <div class="price-item">
@@ -1993,7 +2011,7 @@ function displayDeals(deals, append = false) {
                         </div>
                     </div>
                 </div>
-
+                
                 <div class="deal-footer">
                     <button class="deal-link" onclick="quickAddToCalculator(${deal.price})" title="Add to calculator">
                         <i class="fas fa-plus"></i> Add to Calculator
@@ -2005,55 +2023,56 @@ function displayDeals(deals, append = false) {
             </div>
         `;
     }).join('');
-
-    if (append) {
-        // Append to existing content, but keep the sentinel at the bottom
-        const sentinel = document.getElementById('deals-sentinel');
-        if (sentinel) {
-            sentinel.insertAdjacentHTML('beforebegin', dealsHTML);
-        } else {
-            dealsList.insertAdjacentHTML('beforeend', dealsHTML);
+    
+    // Create pagination controls
+    let paginationHTML = '';
+    if (totalPages > 1) {
+        paginationHTML = `
+            <div class="pagination">
+                <div class="pagination-info">
+                    Page <span class="current-page">${currentPage}</span> out of <span class="total-pages">${totalPages}</span>
+                </div>
+                <div class="pagination-controls">
+                    ${currentPage > 1 ? `<button class="pagination-btn" onclick="goToPage(${currentPage - 1})"><i class="fas fa-chevron-left"></i> Prev</button>` : ''}
+        `;
+        
+        // Show page numbers
+        const maxPagesToShow = 5;
+        const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+        const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+        
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === currentPage) {
+                paginationHTML += `<button class="pagination-btn active">${i}</button>`;
+            } else {
+                paginationHTML += `<button class="pagination-btn" onclick="goToPage(${i})">${i}</button>`;
+            }
         }
-    } else {
-        // Replace all content
-        dealsList.innerHTML = dealsHTML;
-    }
-}
-
-// Generate skeleton loading placeholders
-function generateSkeletonLoaders(count) {
-    let skeletonHTML = '';
-    for (let i = 0; i < count; i++) {
-        skeletonHTML += `
-            <div class="deal-card skeleton">
-                <div class="deal-header">
-                    <div class="skeleton-title"></div>
-                    <div class="skeleton-badges">
-                        <div class="skeleton-badge"></div>
-                    </div>
-                </div>
-                <div class="deal-body">
-                    <div class="skeleton-prices">
-                        <div class="skeleton-price-item"></div>
-                        <div class="skeleton-price-item"></div>
-                    </div>
-                </div>
-                <div class="deal-footer">
-                    <div class="skeleton-button"></div>
-                    <div class="skeleton-button"></div>
+        
+        paginationHTML += `
+                    ${currentPage < totalPages ? `<button class="pagination-btn" onclick="goToPage(${currentPage + 1})">Next <i class="fas fa-chevron-right"></i></button>` : ''}
                 </div>
             </div>
         `;
     }
-    return skeletonHTML;
+    
+    dealsList.innerHTML = dealsHTML + paginationHTML;
+}
+
+// Navigate to a specific page
+function goToPage(page) {
+    currentPage = page;
+    displayDeals(displayedDeals, false);
+    // Scroll to deals section
+    document.getElementById('dealsList').scrollIntoView({ behavior: 'smooth' });
 }
 
 // Sort deals based on selected option
 function sortDeals(sortBy) {
     if (!currentDeals || currentDeals.length === 0) return;
-
+    
     let sortedDeals = [...currentDeals];
-
+    
     switch(sortBy) {
         case 'deal':
             // Sort by deal rating (best deals first)
@@ -2074,15 +2093,9 @@ function sortDeals(sortBy) {
         default:
             return;
     }
-
-    // Update current deals and redisplay
-    currentDeals = sortedDeals;
-    displayDeals(currentDeals, false);
-
-    // Reinitialize infinite scroll since we replaced the content
-    if (hasMoreDeals) {
-        setTimeout(() => initializeInfiniteScroll(), 100);
-    }
+    
+    // Update display with sorted deals
+    displayDeals(sortedDeals);
 }
 
 // Filter giveaways by platform - show only $0 games for Steam, all deals for All
@@ -2126,18 +2139,6 @@ function refreshDeals() {
         showNotification("Already loading deals...", "warning");
         return;
     }
-
-    // Reset infinite scroll state
-    currentOffset = 0;
-    hasMoreDeals = true;
-    isLoadingMore = false;
-
-    // Disconnect existing observer
-    if (dealsObserver) {
-        dealsObserver.disconnect();
-        dealsObserver = null;
-    }
-
     // Force refresh by bypassing cache
     loadDeals(true);
 }

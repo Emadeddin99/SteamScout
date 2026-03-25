@@ -19,28 +19,20 @@ export default async function handler(req, res) {
 
     try {
         console.log('[API] Starting deals fetch...');
-
-        // Parse pagination parameters
-        const offset = parseInt(req.query.offset) || 0;
-        const limit = parseInt(req.query.limit) || 50; // Default to 50 for infinite scroll
-
+        
         // Fetch from both sources
         console.log('[API] Fetching from both ITAD and CheapShark...');
         const [itadDeals, cheapsharkDeals] = await Promise.all([
             fetchIsThereAnyDealDeals(),
             fetchCheapSharkDeals()
         ]);
-
+        
         console.log(`[API] ITAD: ${itadDeals.length} deals, CheapShark: ${cheapsharkDeals.length} deals`);
-
+        
         // Combine deals from both sources
         let deals = [...itadDeals, ...cheapsharkDeals];
         console.log(`[API] Combined total: ${deals.length} deals before deduplication`);
-
-        if (deals.length === 0) {
-            console.warn('[API] No deals from external APIs. Returning empty deal list.');
-        }
-
+        
         // Debug mode: include source counts and small samples when ?debug=1
         const debugMode = req.query && (req.query.debug === '1' || req.query.debug === 'true');
         const debugInfo = {
@@ -52,27 +44,21 @@ export default async function handler(req, res) {
 
         // Deduplicate deals by steamAppID, keeping best discount
         deals = deduplicateDeals(deals);
-
+        
         // Filter invalid deals
         deals = filterValidDeals(deals);
+        
+        // Sort by discount descending, limit to 3000
+        deals = deals
+            .sort((a, b) => b.discount - a.discount)
+            .slice(0, 3000);
 
-        // Sort by discount descending
-        deals = deals.sort((a, b) => b.discount - a.discount);
-
-        // Apply pagination
-        const totalDeals = deals.length;
-        const paginatedDeals = deals.slice(offset, offset + limit);
-
-        console.log(`[API] ✅ After processing: ${totalDeals} total deals, returning ${paginatedDeals.length} (offset: ${offset}, limit: ${limit})`);
+        console.log(`[API] ✅ Returning ${deals.length} deals`);
 
         const responsePayload = {
             success: true,
-            count: paginatedDeals.length,
-            total: totalDeals,
-            offset: offset,
-            limit: limit,
-            deals: paginatedDeals,
-            hasMore: (offset + limit) < totalDeals,
+            count: deals.length,
+            deals,
             timestamp: new Date().toISOString()
         };
 
@@ -104,7 +90,7 @@ async function fetchIsThereAnyDealDeals() {
         const ITAD_API_KEY = process.env.ITAD_API_KEY;
 
         if (!ITAD_API_KEY) {
-            console.warn('[API] ITAD_API_KEY not configured - skipping ITAD');
+            console.warn('[API] ITAD_API_KEY not configured');
             return [];
         }
 
@@ -260,10 +246,8 @@ async function fetchCheapSharkDeals() {
                     });
 
                     if (!response.ok) {
-                        const errorText = await response.text();
-                        errors.push({ page: pageNumber, status: response.status, error: errorText });
+                        errors.push({ page: pageNumber, status: response.status });
                         console.warn(`[API] CheapShark page ${pageNumber} returned ${response.status} (attempt ${attempt + 1})`);
-                        console.warn(`[API] Error details: ${errorText.substring(0, 200)}`);
 
                         if (response.status === 429) {
                             // Rate limited — back off and retry
@@ -278,16 +262,13 @@ async function fetchCheapSharkDeals() {
                     pageData = await response.json();
 
                     if (!Array.isArray(pageData) || pageData.length === 0) {
-                        console.log(`[API] CheapShark page ${pageNumber}: No more deals (empty response)`);
+                        console.log(`[API] CheapShark page ${pageNumber}: No more deals`);
                         pageFetched = false;
                         break; // No more deals to fetch
                     }
 
-                    // Filter to ensure we only get Steam deals (storeID=1)
-                    const steamDeals = pageData.filter(deal => deal.storeID === '1' || deal.storeID === 1);
-                    console.log(`[API] CheapShark page ${pageNumber}: ${pageData.length} total deals, ${steamDeals.length} Steam deals`);
-                    
-                    allDeals = allDeals.concat(steamDeals);
+                    console.log(`[API] CheapShark page ${pageNumber}: ${pageData.length} deals`);
+                    allDeals = allDeals.concat(pageData);
                     pageFetched = true;
                     break;
 
@@ -333,10 +314,21 @@ async function fetchCheapSharkDeals() {
 
             console.log(`[API] CheapShark normalized: ${normalized.length} valid deals`);
 
-            // If nothing was fetched from CheapShark, return empty array (will use main API fallback)
+            // If nothing was fetched from CheapShark, fall back to local sample file
             if (normalized.length === 0) {
-                console.warn('[API] CheapShark returned no valid deals');
-                return [];
+                try {
+                    console.warn('[API] CheapShark returned no deals; attempting to load local sample fallback');
+                    const fs = require('fs');
+                    const path = require('path');
+                    const samplePath = path.resolve(__dirname, '../assets/sample-deals.json');
+                    const sampleRaw = fs.readFileSync(samplePath, 'utf-8');
+                    const sample = JSON.parse(sampleRaw);
+                    console.log(`[API] Loaded ${sample.length} deals from local sample fallback`);
+                    return sample;
+                } catch (err) {
+                    console.error('[API] Failed to load local sample fallback:', err.message);
+                    return [];
+                }
             }
 
             return normalized;

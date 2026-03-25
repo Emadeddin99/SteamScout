@@ -1116,13 +1116,6 @@ a:hover {
     margin-bottom: 24px;
 }
 
-.pagination-info {
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-    color: var(--text-light);
-    text-align: right;
-}
-
 @media (max-width: 768px) {
     .deals-controls {
         grid-template-columns: 1fr;
@@ -1456,100 +1449,119 @@ a:hover {
 }
 
 /* ============================================
-   SKELETON LOADING & INFINITE SCROLL
+   PAGINATION
    ============================================ */
-
-/* Skeleton loading animation */
-@keyframes skeletonPulse {
-    0% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.5;
-    }
-    100% {
-        opacity: 1;
-    }
-}
-
-.deal-card.skeleton {
-    pointer-events: none;
-    animation: skeletonPulse 1.5s ease-in-out infinite;
-}
-
-.deal-card.skeleton .deal-header,
-.deal-card.skeleton .deal-body,
-.deal-card.skeleton .deal-footer {
-    background: var(--bg-tertiary);
-}
-
-.skeleton-title {
-    height: 20px;
-    background: var(--border-color);
-    border-radius: var(--radius-sm);
-    margin-bottom: 8px;
-}
-
-.skeleton-badges {
-    display: flex;
-    gap: 6px;
-}
-
-.skeleton-badge {
-    height: 20px;
-    width: 60px;
-    background: var(--border-color);
-    border-radius: var(--radius-sm);
-}
-
-.skeleton-prices {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-}
-
-.skeleton-price-item {
-    height: 80px;
-    background: var(--border-color);
-    border-radius: var(--radius-md);
-}
-
-.skeleton-button {
-    height: 40px;
-    background: var(--border-color);
-    border-radius: var(--radius-sm);
-    margin-bottom: 8px;
-}
-
-/* Loading more indicator */
-.loading-more {
-    grid-column: 1 / -1;
+.pagination {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 32px;
     gap: 16px;
-    color: var(--text-secondary);
+    padding: 24px;
+    background: linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, rgba(0, 212, 255, 0.02) 100%);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    margin: 32px auto;
+    width: 100%;
+    max-width: 100%;
+    animation: fadeInUp 0.5s ease-out;
+    grid-column: 1 / -1;
 }
 
-.loading-more .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid var(--border-color);
-    border-top: 4px solid var(--accent);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.loading-more p {
+.pagination-info {
+    font-size: 1.1rem;
     font-weight: 600;
-    margin: 0;
+    color: var(--text-primary);
+}
+
+.current-page {
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.total-pages {
+    color: var(--accent-light);
+}
+
+.pagination-controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    animation: expandWidth 0.3s ease-out;
+}
+
+@keyframes expandWidth {
+    from {
+        opacity: 0.8;
+        transform: scaleY(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scaleY(1);
+    }
+}
+
+.pagination-btn {
+    padding: 10px 14px;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 40px;
+    justify-content: center;
+    animation: buttonAppear 0.3s ease-out;
+}
+
+@keyframes buttonAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.pagination-btn:hover {
+    border-color: var(--accent);
+    background: rgba(0, 212, 255, 0.1);
+    color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 212, 255, 0.2);
+}
+
+.pagination-btn.active {
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    color: var(--bg-primary);
+    border-color: var(--accent);
+    box-shadow: 0 6px 16px rgba(0, 212, 255, 0.3);
+}
+
+@media (max-width: 640px) {
+    .pagination {
+        gap: 12px;
+        padding: 16px;
+    }
+    
+    .pagination-info {
+        font-size: 0.95rem;
+    }
+    
+    .pagination-btn {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+        min-width: 36px;
+    }
 }
 
 /* ============================================
