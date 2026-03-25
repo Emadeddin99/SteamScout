@@ -19,6 +19,13 @@ export default async function handler(req, res) {
 
     console.log('[API] Starting deals fetch at', new Date().toISOString());
     
+    // Handle pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+    
+    console.log(`[API] Pagination: page ${page}, limit ${limit}, offset ${offset}`);
+    
     try {
         // Fetch from both sources
         console.log('[API] Fetching from ITAD and CheapShark...');
@@ -63,11 +70,19 @@ export default async function handler(req, res) {
             deals = getHardcodedSampleDeals();
         }
 
+        // Apply pagination
+        const totalDeals = deals.length;
+        const paginatedDeals = deals.slice(offset, offset + limit);
+        
+        console.log(`[API] Pagination: returning ${paginatedDeals.length} deals (offset ${offset}, limit ${limit}) out of ${totalDeals} total`);
+
         const responsePayload = {
             success: true,
-            count: deals.length,
-            total: deals.length, // Add total field for frontend
-            deals,
+            count: paginatedDeals.length,
+            total: totalDeals, // Total deals available
+            page: page,
+            limit: limit,
+            deals: paginatedDeals,
             timestamp: new Date().toISOString()
         };
 
@@ -88,36 +103,6 @@ export default async function handler(req, res) {
         });
     }
 }
-        
-        // Sort by discount descending, limit to 3000
-        deals = deals
-            .sort((a, b) => b.discount - a.discount)
-            .slice(0, 3000);
-
-        console.log(`[API] ✅ Returning ${deals.length} deals`);
-
-        const responsePayload = {
-            success: true,
-            count: deals.length,
-            deals,
-            timestamp: new Date().toISOString()
-        };
-
-        if (debugMode) {
-            responsePayload.debug = debugInfo;
-        }
-
-        res.status(200).json(responsePayload);
-
-    } catch (error) {
-        console.error('[API] Fatal error:', error);
-        res.status(500).json({
-            success: false,
-            error: error.message || 'Failed to fetch deals',
-            count: 0,
-            deals: []
-        });
-    }
 }
 
 /**
