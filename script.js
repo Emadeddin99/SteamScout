@@ -1061,9 +1061,21 @@ function initializeDealsFilters() {
     const dealsSort = document.getElementById('dealsSort');
     if (dealsSort) {
         dealsSort.addEventListener('change', function() {
-            sortDeals(this.value);
+            updateSteamDealsDisplay();
         });
     }
+
+    // Setup min/max filters for Steam deals
+    const minDiscountInput = document.getElementById('minDiscount');
+    const maxPriceInput = document.getElementById('maxPrice');
+
+    [minDiscountInput, maxPriceInput].forEach(input => {
+        if (input) {
+            input.addEventListener('input', () => {
+                updateSteamDealsDisplay();
+            });
+        }
+    });
     
     // Setup game search
     const gameSearchInput = document.getElementById('gameSearchInput');
@@ -1653,8 +1665,7 @@ function clearGameSearch() {
     
     // Reload all deals
     if (currentDeals.length > 0) {
-        displayDeals(currentDeals);
-        sortDeals(document.getElementById('dealsSort').value);
+        updateSteamDealsDisplay();
     } else {
         loadDeals();
     }
@@ -1711,7 +1722,14 @@ async function loadDeals(forceRefresh = false) {
             return salePrice < normalPrice && discount > 0 && salePrice < 1000 && normalPrice < 1000;
         });
         console.log(`Filtered deals: ${deals.length} deals after removing fake discounts and invalid prices`);
-        
+
+        // Steam-only filter (remove non-Steam results if coming from aggregate sources)
+        deals = deals.filter(d => {
+            const platform = (d.platform || d.storeName || d.store || '').toString().toLowerCase();
+            return platform.includes('steam') || platform === '1';
+        });
+        console.log(`Steam-only: ${deals.length} deals after platform filtering`);
+
         // Cache the results
         currentDeals = deals;
         dealsCache = {
@@ -1720,16 +1738,7 @@ async function loadDeals(forceRefresh = false) {
             ttl: 3600000
         };
         
-        displayDeals(deals);
-        
-        // Reapply current filter after displaying deals
-        const activeFilterBtn = document.querySelector('.deals-filter-btn.active');
-        if (activeFilterBtn) {
-            const platform = activeFilterBtn.dataset.platform;
-            filterDeals(platform);
-        }
-        
-        sortDeals(document.getElementById('dealsSort').value);
+        updateSteamDealsDisplay();
         
         showNotification(`Loaded ${deals.length} current deals!`, "success");
         
@@ -2068,10 +2077,14 @@ function goToPage(page) {
 }
 
 // Sort deals based on selected option
-function sortDeals(sortBy) {
-    if (!currentDeals || currentDeals.length === 0) return;
+function sortDeals(sortBy, dealsList = null) {
+    const workingDeals = dealsList && Array.isArray(dealsList) ? dealsList : currentDeals;
+    if (!workingDeals || workingDeals.length === 0) {
+        displayDeals([]);
+        return;
+    }
     
-    let sortedDeals = [...currentDeals];
+    let sortedDeals = [...workingDeals];
     
     switch(sortBy) {
         case 'deal':
@@ -2086,6 +2099,10 @@ function sortDeals(sortBy) {
             // Sort by actual price (lowest first)
             sortedDeals.sort((a, b) => a.price - b.price);
             break;
+        case 'price_desc':
+            // Sort by actual price (highest first)
+            sortedDeals.sort((a, b) => b.price - a.price);
+            break;
         case 'rating':
             // Sort by game rating (highest first)
             sortedDeals.sort((a, b) => b.rating - a.rating);
@@ -2098,39 +2115,60 @@ function sortDeals(sortBy) {
     displayDeals(sortedDeals);
 }
 
+function applySteamDealFilters(deals) {
+    if (!deals || deals.length === 0) return deals;
+
+    const minDiscount = parseFloat(document.getElementById('minDiscount')?.value) || 0;
+    const maxPrice = parseFloat(document.getElementById('maxPrice')?.value);
+
+    return deals.filter(deal => {
+        const price = parseFloat(deal.price) || 0;
+        const discount = parseFloat(deal.discountPercent || deal.discount || 0);
+
+        if (discount < minDiscount) return false;
+        if (!isNaN(maxPrice) && maxPrice > 0 && price > maxPrice) return false;
+
+        return true;
+    });
+}
+
+function updateSteamDealsDisplay() {
+    if (!currentDeals || currentDeals.length === 0) {
+        displayDeals([]);
+        return;
+    }
+
+    let filtered = applySteamDealFilters(currentDeals);
+    filtered = filtered.filter(d => {
+        const platformKey = (d.platform || d.storeName || d.store || '').toString().toLowerCase();
+        return platformKey.includes('steam') || platformKey === '1';
+    });
+
+    const sortBy = document.getElementById('dealsSort')?.value || 'discount';
+    sortDeals(sortBy, filtered);
+}
+
 // Filter giveaways by platform - show only $0 games for Steam, all deals for All
 function filterDeals(platform) {
-    const allDeals = document.querySelectorAll('.deal-item');
-    
-    const storeIDMap = {
-        'steam': '1'
-    };
-    
-    const storeID = storeIDMap[platform];
-    
-    console.log('Filtering giveaways by platform:', platform, 'storeID:', storeID, 'total giveaways:', allDeals.length);
-    
-    let visibleCount = 0;
-    allDeals.forEach(deal => {
-        const price = parseFloat(deal.dataset.price);
-        const isFree = price === 0;
-        
-        if (platform === 'all') {
-            // Show all deals for "All Giveaways"
-            deal.style.display = 'block';
-            visibleCount++;
-        } else {
-            // For "Steam Giveaways", show only $0 games from Steam
-            if (isFree && deal.dataset.storeid === storeID) {
-                deal.style.display = 'block';
-                visibleCount++;
-            } else {
-                deal.style.display = 'none';
-            }
+    if (!currentDeals || currentDeals.length === 0) return;
+
+    let filteredDeals = [...currentDeals];
+
+    if (platform && platform !== 'all' && platform !== 'steam') {
+        if (platform === 'free') {
+            filteredDeals = filteredDeals.filter(d => (d.price || 0) <= 0);
         }
+    }
+
+    // Always steam-only
+    filteredDeals = filteredDeals.filter(d => {
+        const platformKey = (d.platform || d.storeName || d.store || '').toString().toLowerCase();
+        return platformKey.includes('steam') || platformKey === '1';
     });
-    
-    console.log('Filter result: showing', visibleCount, platform === 'all' ? 'deals' : 'giveaways ($0 games)');
+
+    displayDeals(filteredDeals);
+
+    console.log(`Filtered deals for ${platform} (Steam only): ${filteredDeals.length}`);
 }
 
 // Refresh deals

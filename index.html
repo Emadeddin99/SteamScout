@@ -15,37 +15,42 @@
     
     <div class="app-container">
         <!-- Header -->
-        <header class="header">
-            <div class="header-content">
-                <div class="logo-section">
-                    <div class="logo-icon">
-                        <i class="fa-solid fa-magnifying-glass-dollar"></i>
-                    </div>
-                    <div class="logo-text">
-                        <h1>SteamScout</h1>
-                        <p class="tagline">Calculate • Browse • Save</p>
-                    </div>
+        <header class="header site-header">
+            <div class="header-inner">
+              <div class="logo">
+                <span class="logo-icon">↓</span>
+                STEAMSCOUT
+              </div>
+
+              <div class="toolbar">
+                <div class="search-wrap">
+                  <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                  <input id="gameSearchInput" class="input" type="search" placeholder="Search game title…" />
                 </div>
-                <nav class="header-nav">
-                    <button class="nav-btn" onclick="scrollToSection('calculator')" title="Go to calculator">
-                        <i class="fas fa-calculator"></i>
-                        <span class="nav-label">Calculator</span>
-                    </button>
-                    <button class="nav-btn" onclick="scrollToSection('deals')" title="Browse deals">
-                        <i class="fas fa-fire"></i>
-                        <span class="nav-label">Deals</span>
-                    </button>
-                    <button class="nav-btn" onclick="scrollToSection('history')" title="View history">
-                        <i class="fas fa-history"></i>
-                        <span class="nav-label">History</span>
-                    </button>
-                    <button class="nav-btn settings-btn" onclick="toggleSettings()" title="Settings">
-                        <i class="fas fa-cog"></i>
-                        <span class="nav-label">Settings</span>
-                    </button>
-                </nav>
+
+                <input id="minDiscount" class="input input-sm" type="number" min="0" max="100" placeholder="Min % off" />
+                <input id="maxPrice"    class="input input-sm" type="number" min="0" step="0.01" placeholder="Max $" />
+
+                <select id="dealType" class="select" disabled>
+                  <option value="sale">Sale</option>
+                </select>
+
+                <select id="shops" class="select" disabled>
+                  <option value="steam">Steam only</option>
+                </select>
+
+                <select id="dealsSort" class="select" onchange="sortDeals(this.value)">
+                  <option value="discount">Best discount</option>
+                  <option value="price">Lowest price</option>
+                  <option value="price_desc">Highest price</option>
+                </select>
+
+                <input id="limit" class="input input-sm" type="number" min="10" max="500" step="10" placeholder="Limit" />
+
+                <button id="refresh" class="btn-refresh" onclick="refreshDeals()">↺ Refresh</button>
+              </div>
             </div>
-        </header>
+          </header>
 
         <!-- Main Content -->
         <main class="main-content">
