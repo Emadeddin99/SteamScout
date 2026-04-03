@@ -206,6 +206,7 @@ async function fetchCheapSharkDeals() {
     console.warn('[API] fetchCheapSharkDeals called, but cheapshark is disabled (ITAD-only).');
     return [];
 }
+}
 
 /**
  * Normalize CheapShark deal to standard shape

@@ -2285,7 +2285,6 @@ function updateDealsStats(count, avgDiscount, maxDiscount) {
     `;
 }
 
-// Filter giveaways by platform - show only $0 games for Steam, all deals for All
 function filterDeals(platform) {
     if (!currentDeals || currentDeals.length === 0) return;
 
