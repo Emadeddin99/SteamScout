@@ -7,7 +7,7 @@
 const MAX_RETRIES = 2;
 const RETRY_DELAY = 500; // ms
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Origin', '*');

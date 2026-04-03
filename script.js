@@ -2253,12 +2253,6 @@ function updateSteamDealsDisplay() {
 
     const sortBy = document.getElementById('dealsSort')?.value || 'discount';
     sortDeals(sortBy, filtered);
-}
-
-// Update deals statistics display
-function updateDealsStats(count, avgDiscount, maxDiscount) {
-    const statsContainer = document.getElementById('dealsStats');
-    if (!statsContainer) return;
 
     if (count === 0) {
         statsContainer.style.display = 'none';

@@ -39,16 +39,20 @@ module.exports = async function handler(req, res) {
         // Filter invalid deals
         deals = filterValidDeals(deals);
         
-        // Sort by discount descending, limit to 3000
-        deals = deals
+        // Apply sort + global caps
+deals = deals
             .sort((a, b) => b.discount - a.discount)
             .slice(0, 3000);
 
-        console.log(`[API] ✅ Returning ${deals.length} deals`);
+        // paging (offset + limit) for client lazy scroll
+        const requestOffset = Math.max(parseInt(req.query.offset || '0', 10), 0);
+        const requestLimit = Math.max(Math.min(parseInt(req.query.limit || '20', 10), 100), 5);
+        const pagedDeals = deals.slice(requestOffset, requestOffset + requestLimit);
 
-        const responsePayload = {
-            success: true,
-            count: deals.length,
+        responsePayload.deals = pagedDeals;
+        responsePayload.offset = requestOffset;
+        responsePayload.limit = requestLimit;
+        responsePayload.total = deals.length;
             deals,
             timestamp: new Date().toISOString()
         };
