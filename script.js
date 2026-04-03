@@ -29,6 +29,22 @@ let currentGameSuggestions = []; // Store current suggestions for Enter key disp
 let currentPage = 1;
 const dealsPerPage = 12;
 
+// Debounce helper for performance
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Debounced filter handlers (initialized later)
+let debouncedFilterUpdate = null;
+
 
 
 // Initialize the calculator
@@ -580,17 +596,17 @@ function restoreFromHistory(itemId) {
         showNotification("Calculation not found", "error");
         return;
     }
-    
+
     // Try to get cached price data first
     const calculationCache = JSON.parse(sessionStorage.getItem('calculationCache') || '{}');
     const cachedData = calculationCache[itemId];
-    
+
     // Check if cache is still valid (not expired)
     if (cachedData && cachedData.expiry > Date.now()) {
         // Restore from cache
         document.getElementById('gameCount').value = cachedData.gameCount;
         updateGameFields();
-        
+
         // Restore prices from cache by targeting gamePrice0, gamePrice1, etc
         if (cachedData.gamePrices && cachedData.gamePrices.length > 0) {
             cachedData.gamePrices.forEach((game) => {
@@ -600,7 +616,7 @@ function restoreFromHistory(itemId) {
                 }
             });
         }
-        
+
         // Restore tax rate and input (taxRate saved as percent)
         const restoredTax = cachedData.taxRate;
         document.getElementById('taxRateSlider').value = restoredTax;
@@ -614,7 +630,7 @@ function restoreFromHistory(itemId) {
         // Fallback to history item data if cache is expired
         document.getElementById('gameCount').value = item.count;
         updateGameFields();
-        
+
         if (item.gamePrices && item.gamePrices.length > 0) {
             item.gamePrices.forEach((game) => {
                 const input = document.getElementById(`gamePrice${game.index}`);
@@ -623,7 +639,7 @@ function restoreFromHistory(itemId) {
                 }
             });
         }
-        
+
         const restoredTax = item.taxRate;
         document.getElementById('taxRateSlider').value = restoredTax;
         document.getElementById('taxRateInput').value = restoredTax;
@@ -631,25 +647,20 @@ function restoreFromHistory(itemId) {
         const activeBtn = document.querySelector(`.tax-preset[data-tax="${restoredTax}"]`);
         if (activeBtn) activeBtn.classList.add('active');
         updateTaxDisplay();
-        
+
         if (!cachedData) {
             showNotification("Cache expired, using saved calculation data", "info");
         }
     }
-    
+
     // Scroll to calculator
     scrollToSection('calculator');
-    
+
     // Recalculate
     calculateTotal();
-    
+
     showNotification('Calculation restored', 'success');
 }
-    
-    // Recalculate
-    calculateTotal();
-    
-    showNotification('Calculation restored', 'success');
 
 
 function clearHistory() {
@@ -1061,37 +1072,60 @@ function initializeDealsFilters() {
     const dealsSort = document.getElementById('dealsSort');
     if (dealsSort) {
         dealsSort.addEventListener('change', function() {
-            sortDeals(this.value);
+            updateSteamDealsDisplay();
         });
     }
+
+    // Setup min/max filters for Steam deals with debounce for performance
+    const minDiscountInput = document.getElementById('minDiscount');
+    const maxPriceInput = document.getElementById('maxPrice');
+
+    // Create debounced filter update
+    debouncedFilterUpdate = debounce(() => updateSteamDealsDisplay(), 150);
+
+    [minDiscountInput, maxPriceInput].forEach(input => {
+        if (input) {
+            input.addEventListener('input', debouncedFilterUpdate);
+        }
+    });
     
-    // Setup game search
-    const gameSearchInput = document.getElementById('gameSearchInput');
-    if (gameSearchInput) {
-        gameSearchInput.addEventListener('input', function(e) {
+    // Setup game search (handle both header and deals section inputs)
+    const gameSearchInputs = [
+        document.getElementById('gameSearchInput'),
+        document.getElementById('gameSearchInputDeals')
+    ].filter(Boolean);
+
+    gameSearchInputs.forEach(input => {
+        input.addEventListener('input', function(e) {
             handleGameSearch(e.target.value);
+            // Sync both inputs
+            gameSearchInputs.forEach(otherInput => {
+                if (otherInput !== input) {
+                    otherInput.value = e.target.value;
+                }
+            });
         });
-        
-        gameSearchInput.addEventListener('keydown', function(e) {
+
+        input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
                 // Close suggestions
                 document.getElementById('searchSuggestions').innerHTML = '';
             }
         });
-    }
+    });
 }
 
 // Handle game search with autocomplete
 function handleGameSearch(query) {
     clearTimeout(searchTimeout);
     const suggestionsDiv = document.getElementById('searchSuggestions');
-    
+
     if (!query.trim()) {
         suggestionsDiv.innerHTML = '';
         return;
     }
-    
+
     searchTimeout = setTimeout(async () => {
         try {
             const suggestions = await fetchGameSuggestions(query);
@@ -1099,7 +1133,7 @@ function handleGameSearch(query) {
         } catch (error) {
             console.error('Search error:', error);
         }
-    }, 300);
+    }, 250); // Reduced from 300ms for faster response
 }
 
 // Fetch game suggestions from RAWG API
@@ -1230,11 +1264,15 @@ function displayAllSuggestionsAsCards(games) {
 
 // Lookup game prices (when clicking suggestion)
 async function lookupGamePrices(gameName, gameID) {
-    const searchInput = document.getElementById('gameSearchInput');
-    if (searchInput) {
-        searchInput.value = gameName;
-    }
-    
+    // Update both search inputs
+    const searchInputs = [
+        document.getElementById('gameSearchInput'),
+        document.getElementById('gameSearchInputDeals')
+    ];
+    searchInputs.forEach(input => {
+        if (input) input.value = gameName;
+    });
+
     // Hide suggestions
     document.getElementById('searchSuggestions').innerHTML = '';
     
@@ -1316,11 +1354,15 @@ async function lookupGamePrices(gameName, gameID) {
 
 // Search games by name (filter deals)
 function searchGamesByName(gameName) {
-    const searchInput = document.getElementById('gameSearchInput');
-    if (searchInput) {
-        searchInput.value = gameName;
-    }
-    
+    // Update both search inputs
+    const searchInputs = [
+        document.getElementById('gameSearchInput'),
+        document.getElementById('gameSearchInputDeals')
+    ];
+    searchInputs.forEach(input => {
+        if (input) input.value = gameName;
+    });
+
     // Hide suggestions
     document.getElementById('searchSuggestions').innerHTML = '';
     
@@ -1645,16 +1687,19 @@ function addGameWithPrice(gameName, price) {
 
 // Clear game search
 function clearGameSearch() {
-    const searchInput = document.getElementById('gameSearchInput');
-    if (searchInput) {
-        searchInput.value = '';
-    }
+    // Clear both search inputs
+    const searchInputs = [
+        document.getElementById('gameSearchInput'),
+        document.getElementById('gameSearchInputDeals')
+    ];
+    searchInputs.forEach(input => {
+        if (input) input.value = '';
+    });
     document.getElementById('searchSuggestions').innerHTML = '';
-    
+
     // Reload all deals
     if (currentDeals.length > 0) {
-        displayDeals(currentDeals);
-        sortDeals(document.getElementById('dealsSort').value);
+        updateSteamDealsDisplay();
     } else {
         loadDeals();
     }
@@ -1663,15 +1708,12 @@ function clearGameSearch() {
 // Load deals with real API
 async function loadDeals(forceRefresh = false) {
     if (dealsLoading) return;
-    
+
     dealsLoading = true;
     const dealsList = document.getElementById('dealsList');
-    dealsList.innerHTML = `
-        <div class="loading-deals">
-            <div class="spinner"></div>
-            <p>Loading current deals...</p>
-        </div>
-    `;
+
+    // Show skeleton loading for better perceived performance
+    dealsList.innerHTML = generateSkeletonDeals(12);
     
     try {
         // Check cache first
@@ -1711,7 +1753,14 @@ async function loadDeals(forceRefresh = false) {
             return salePrice < normalPrice && discount > 0 && salePrice < 1000 && normalPrice < 1000;
         });
         console.log(`Filtered deals: ${deals.length} deals after removing fake discounts and invalid prices`);
-        
+
+        // Steam-only filter (remove non-Steam results if coming from aggregate sources)
+        deals = deals.filter(d => {
+            const platform = (d.platform || d.storeName || d.store || '').toString().toLowerCase();
+            return platform.includes('steam') || platform === '1';
+        });
+        console.log(`Steam-only: ${deals.length} deals after platform filtering`);
+
         // Cache the results
         currentDeals = deals;
         dealsCache = {
@@ -1720,16 +1769,7 @@ async function loadDeals(forceRefresh = false) {
             ttl: 3600000
         };
         
-        displayDeals(deals);
-        
-        // Reapply current filter after displaying deals
-        const activeFilterBtn = document.querySelector('.deals-filter-btn.active');
-        if (activeFilterBtn) {
-            const platform = activeFilterBtn.dataset.platform;
-            filterDeals(platform);
-        }
-        
-        sortDeals(document.getElementById('dealsSort').value);
+        updateSteamDealsDisplay();
         
         showNotification(`Loaded ${deals.length} current deals!`, "success");
         
@@ -1956,10 +1996,39 @@ async function loadSampleDeals() {
     return [];
 }
 
-// Display deals in the list
+// Generate skeleton loading HTML for deals
+function generateSkeletonDeals(count = 6) {
+    return Array(count).fill(0).map(() => `
+        <div class="deal-card skeleton-deal">
+            <div class="deal-header">
+                <div class="skeleton-text skeleton-title"></div>
+                <div class="skeleton-badges">
+                    <div class="skeleton-badge"></div>
+                </div>
+            </div>
+            <div class="deal-body">
+                <div class="deal-prices">
+                    <div class="price-item skeleton-price">
+                        <div class="skeleton-text skeleton-label"></div>
+                        <div class="skeleton-text skeleton-value"></div>
+                    </div>
+                    <div class="price-item skeleton-price">
+                        <div class="skeleton-text skeleton-label"></div>
+                        <div class="skeleton-text skeleton-value"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="deal-footer">
+                <div class="skeleton-button"></div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Display deals in the list with optimized rendering
 function displayDeals(deals, resetPage = true) {
     const dealsList = document.getElementById('dealsList');
-    
+
     if (!deals || deals.length === 0) {
         dealsList.innerHTML = `
             <div class="empty-state">
@@ -1970,93 +2039,130 @@ function displayDeals(deals, resetPage = true) {
         `;
         return;
     }
-    
+
     // Store currently displayed deals for pagination
     displayedDeals = deals;
-    
+
     // Reset to page 1 only when displaying new deals (not when just changing pages)
     if (resetPage) {
         currentPage = 1;
     }
-    
+
     // Calculate pagination
     const totalPages = Math.ceil(deals.length / dealsPerPage);
     const startIndex = (currentPage - 1) * dealsPerPage;
     const endIndex = startIndex + dealsPerPage;
     const paginatedDeals = deals.slice(startIndex, endIndex);
-    
-    // Create deals HTML
-    let dealsHTML = paginatedDeals.map(deal => {
-        return `
-            <div class="deal-card">
-                <div class="deal-header">
-                    <h3 class="deal-title">${deal.title}</h3>
-                    <div class="deal-badges">
-                        <span class="badge">-${deal.discountPercent}%</span>
-                        ${deal.rating ? `<span class="badge">⭐ ${deal.rating}</span>` : ''}
-                    </div>
-                </div>
-                
-                <div class="deal-body">
-                    <div class="deal-prices">
-                        <div class="price-item">
-                            <div class="price-label">Current</div>
-                            <div class="price-value">$${deal.price.toFixed(2)}</div>
-                            ${deal.originalPrice > deal.price ? `<div class="original-price">Was $${deal.originalPrice.toFixed(2)}</div>` : ''}
-                        </div>
-                        <div class="price-item">
-                            <div class="price-label">Save</div>
-                            <div class="price-value" style="color: var(--success);">$${(deal.originalPrice - deal.price).toFixed(2)}</div>
-                            <div class="discount-label">${deal.discountPercent}% off</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="deal-footer">
-                    <button class="deal-link" onclick="quickAddToCalculator(${deal.price})" title="Add to calculator">
-                        <i class="fas fa-plus"></i> Add to Calculator
-                    </button>
-                    <a href="${deal.storeUrl}" target="_blank" class="deal-link" style="background: var(--success); margin-top: 8px; display: block; text-align: center;">
-                        <i class="fas fa-external-link-alt"></i> View Deal
-                    </a>
+
+    // Use document fragment for better performance
+    const fragment = document.createDocumentFragment();
+
+    // Create deals container
+    const dealsContainer = document.createElement('div');
+    dealsContainer.className = 'deals-grid';
+
+    // Build deal cards
+    paginatedDeals.forEach((deal, index) => {
+        const card = document.createElement('div');
+        card.className = 'deal-card';
+        card.style.animationDelay = `${index * 0.05}s`;
+
+        const discountBadge = deal.discountPercent > 50 ?
+            `<span class="badge badge-hot">-${deal.discountPercent}%</span>` :
+            `<span class="badge">-${deal.discountPercent}%</span>`;
+
+        card.innerHTML = `
+            <div class="deal-header">
+                <h3 class="deal-title">${deal.title}</h3>
+                <div class="deal-badges">
+                    ${discountBadge}
+                    ${deal.rating ? `<span class="badge badge-rating">⭐ ${deal.rating}</span>` : ''}
                 </div>
             </div>
-        `;
-    }).join('');
-    
-    // Create pagination controls
-    let paginationHTML = '';
-    if (totalPages > 1) {
-        paginationHTML = `
-            <div class="pagination">
-                <div class="pagination-info">
-                    Page <span class="current-page">${currentPage}</span> out of <span class="total-pages">${totalPages}</span>
+
+            <div class="deal-body">
+                <div class="deal-prices">
+                    <div class="price-item">
+                        <div class="price-label">Current</div>
+                        <div class="price-value">$${deal.price.toFixed(2)}</div>
+                        ${deal.originalPrice > deal.price ? `<div class="original-price">Was $${deal.originalPrice.toFixed(2)}</div>` : ''}
+                    </div>
+                    <div class="price-item price-savings">
+                        <div class="price-label">Save</div>
+                        <div class="price-value savings">$${(deal.originalPrice - deal.price).toFixed(2)}</div>
+                        <div class="discount-label">${deal.discountPercent}% off</div>
+                    </div>
                 </div>
-                <div class="pagination-controls">
-                    ${currentPage > 1 ? `<button class="pagination-btn" onclick="goToPage(${currentPage - 1})"><i class="fas fa-chevron-left"></i> Prev</button>` : ''}
+            </div>
+
+            <div class="deal-footer">
+                <button class="deal-link deal-add-btn" onclick="quickAddToCalculator(${deal.price})" title="Add to calculator">
+                    <i class="fas fa-plus"></i> Add to Calculator
+                </button>
+                <a href="${deal.storeUrl}" target="_blank" class="deal-link deal-view-btn">
+                    <i class="fas fa-external-link-alt"></i> View Deal
+                </a>
+            </div>
         `;
-        
-        // Show page numbers
+
+        dealsContainer.appendChild(card);
+    });
+
+    fragment.appendChild(dealsContainer);
+
+    // Add pagination if needed
+    if (totalPages > 1) {
+        const paginationContainer = document.createElement('div');
+        paginationContainer.className = 'pagination';
+
+        const paginationInfo = document.createElement('div');
+        paginationInfo.className = 'pagination-info';
+        paginationInfo.innerHTML = `Page <span class="current-page">${currentPage}</span> of <span class="total-pages">${totalPages}</span> (${deals.length} deals)`;
+
+        const paginationControls = document.createElement('div');
+        paginationControls.className = 'pagination-controls';
+
+        // Previous button
+        if (currentPage > 1) {
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'pagination-btn';
+            prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i> Prev';
+            prevBtn.onclick = () => goToPage(currentPage - 1);
+            paginationControls.appendChild(prevBtn);
+        }
+
+        // Page numbers
         const maxPagesToShow = 5;
         const startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
         const endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-        
+
         for (let i = startPage; i <= endPage; i++) {
-            if (i === currentPage) {
-                paginationHTML += `<button class="pagination-btn active">${i}</button>`;
-            } else {
-                paginationHTML += `<button class="pagination-btn" onclick="goToPage(${i})">${i}</button>`;
+            const pageBtn = document.createElement('button');
+            pageBtn.className = `pagination-btn${i === currentPage ? ' active' : ''}`;
+            pageBtn.textContent = i;
+            if (i !== currentPage) {
+                pageBtn.onclick = () => goToPage(i);
             }
+            paginationControls.appendChild(pageBtn);
         }
-        
-        paginationHTML += `
-                    ${currentPage < totalPages ? `<button class="pagination-btn" onclick="goToPage(${currentPage + 1})">Next <i class="fas fa-chevron-right"></i></button>` : ''}
-                </div>
-            </div>
-        `;
+
+        // Next button
+        if (currentPage < totalPages) {
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'pagination-btn';
+            nextBtn.innerHTML = 'Next <i class="fas fa-chevron-right"></i>';
+            nextBtn.onclick = () => goToPage(currentPage + 1);
+            paginationControls.appendChild(nextBtn);
+        }
+
+        paginationContainer.appendChild(paginationInfo);
+        paginationContainer.appendChild(paginationControls);
+        fragment.appendChild(paginationContainer);
     }
-    
-    dealsList.innerHTML = dealsHTML + paginationHTML;
+
+    // Clear and append in one operation
+    dealsList.innerHTML = '';
+    dealsList.appendChild(fragment);
 }
 
 // Navigate to a specific page
@@ -2068,10 +2174,14 @@ function goToPage(page) {
 }
 
 // Sort deals based on selected option
-function sortDeals(sortBy) {
-    if (!currentDeals || currentDeals.length === 0) return;
+function sortDeals(sortBy, dealsList = null) {
+    const workingDeals = dealsList && Array.isArray(dealsList) ? dealsList : currentDeals;
+    if (!workingDeals || workingDeals.length === 0) {
+        displayDeals([]);
+        return;
+    }
     
-    let sortedDeals = [...currentDeals];
+    let sortedDeals = [...workingDeals];
     
     switch(sortBy) {
         case 'deal':
@@ -2086,6 +2196,10 @@ function sortDeals(sortBy) {
             // Sort by actual price (lowest first)
             sortedDeals.sort((a, b) => a.price - b.price);
             break;
+        case 'price_desc':
+            // Sort by actual price (highest first)
+            sortedDeals.sort((a, b) => b.price - a.price);
+            break;
         case 'rating':
             // Sort by game rating (highest first)
             sortedDeals.sort((a, b) => b.rating - a.rating);
@@ -2098,39 +2212,100 @@ function sortDeals(sortBy) {
     displayDeals(sortedDeals);
 }
 
+function applySteamDealFilters(deals) {
+    if (!deals || deals.length === 0) return deals;
+
+    const minDiscount = parseFloat(document.getElementById('minDiscount')?.value) || 0;
+    const maxPrice = parseFloat(document.getElementById('maxPrice')?.value);
+
+    return deals.filter(deal => {
+        const price = parseFloat(deal.price) || 0;
+        const discount = parseFloat(deal.discountPercent || deal.discount || 0);
+
+        if (discount < minDiscount) return false;
+        if (!isNaN(maxPrice) && maxPrice > 0 && price > maxPrice) return false;
+
+        return true;
+    });
+}
+
+function updateSteamDealsDisplay() {
+    if (!currentDeals || currentDeals.length === 0) {
+        displayDeals([]);
+        updateDealsStats(0, 0, 0);
+        return;
+    }
+
+    let filtered = applySteamDealFilters(currentDeals);
+    filtered = filtered.filter(d => {
+        const platformKey = (d.platform || d.storeName || d.store || '').toString().toLowerCase();
+        return platformKey.includes('steam') || platformKey === '1';
+    });
+
+    // Update stats
+    if (filtered.length > 0) {
+        const avgDiscount = Math.round(filtered.reduce((sum, d) => sum + (d.discountPercent || d.discount || 0), 0) / filtered.length);
+        const maxDiscount = Math.max(...filtered.map(d => d.discountPercent || d.discount || 0));
+        updateDealsStats(filtered.length, avgDiscount, maxDiscount);
+    } else {
+        updateDealsStats(0, 0, 0);
+    }
+
+    const sortBy = document.getElementById('dealsSort')?.value || 'discount';
+    sortDeals(sortBy, filtered);
+}
+
+// Update deals statistics display
+function updateDealsStats(count, avgDiscount, maxDiscount) {
+    const statsContainer = document.getElementById('dealsStats');
+    if (!statsContainer) return;
+
+    if (count === 0) {
+        statsContainer.style.display = 'none';
+        return;
+    }
+
+    statsContainer.style.display = 'flex';
+    statsContainer.innerHTML = `
+        <div class="stat-item">
+            <i class="fas fa-gamepad"></i>
+            <span class="stat-value">${count}</span>
+            <span class="stat-label">deals</span>
+        </div>
+        <div class="stat-item">
+            <i class="fas fa-percentage"></i>
+            <span class="stat-value">${avgDiscount}%</span>
+            <span class="stat-label">avg off</span>
+        </div>
+        <div class="stat-item stat-highlight">
+            <i class="fas fa-fire"></i>
+            <span class="stat-value">${maxDiscount}%</span>
+            <span class="stat-label">best deal</span>
+        </div>
+    `;
+}
+
 // Filter giveaways by platform - show only $0 games for Steam, all deals for All
 function filterDeals(platform) {
-    const allDeals = document.querySelectorAll('.deal-item');
-    
-    const storeIDMap = {
-        'steam': '1'
-    };
-    
-    const storeID = storeIDMap[platform];
-    
-    console.log('Filtering giveaways by platform:', platform, 'storeID:', storeID, 'total giveaways:', allDeals.length);
-    
-    let visibleCount = 0;
-    allDeals.forEach(deal => {
-        const price = parseFloat(deal.dataset.price);
-        const isFree = price === 0;
-        
-        if (platform === 'all') {
-            // Show all deals for "All Giveaways"
-            deal.style.display = 'block';
-            visibleCount++;
-        } else {
-            // For "Steam Giveaways", show only $0 games from Steam
-            if (isFree && deal.dataset.storeid === storeID) {
-                deal.style.display = 'block';
-                visibleCount++;
-            } else {
-                deal.style.display = 'none';
-            }
+    if (!currentDeals || currentDeals.length === 0) return;
+
+    let filteredDeals = [...currentDeals];
+
+    if (platform && platform !== 'all' && platform !== 'steam') {
+        if (platform === 'free') {
+            filteredDeals = filteredDeals.filter(d => (d.price || 0) <= 0);
         }
+    }
+
+    // Always steam-only
+    filteredDeals = filteredDeals.filter(d => {
+        const platformKey = (d.platform || d.storeName || d.store || '').toString().toLowerCase();
+        return platformKey.includes('steam') || platformKey === '1';
     });
-    
-    console.log('Filter result: showing', visibleCount, platform === 'all' ? 'deals' : 'giveaways ($0 games)');
+
+    displayDeals(filteredDeals);
+
+    console.log(`Filtered deals for ${platform} (Steam only): ${filteredDeals.length}`);
 }
 
 // Refresh deals

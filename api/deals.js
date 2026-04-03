@@ -20,26 +20,17 @@ export default async function handler(req, res) {
     try {
         console.log('[API] Starting deals fetch...');
         
-        // Fetch from both sources
-        console.log('[API] Fetching from both ITAD and CheapShark...');
-        const [itadDeals, cheapsharkDeals] = await Promise.all([
-            fetchIsThereAnyDealDeals(),
-            fetchCheapSharkDeals()
-        ]);
+        // Fetch from ITAD only (CheapShark ignored for this build)
+        console.log('[API] Fetching from ITAD only (cheapshark disabled)...');
+        const itadDeals = await fetchIsThereAnyDealDeals();
+        let deals = Array.isArray(itadDeals) ? itadDeals : [];
+        console.log(`[API] ITAD: ${deals.length} deals before deduplication`);
         
-        console.log(`[API] ITAD: ${itadDeals.length} deals, CheapShark: ${cheapsharkDeals.length} deals`);
-        
-        // Combine deals from both sources
-        let deals = [...itadDeals, ...cheapsharkDeals];
-        console.log(`[API] Combined total: ${deals.length} deals before deduplication`);
-        
-        // Debug mode: include source counts and small samples when ?debug=1
+        // Debug mode: include source counts and sample when ?debug=1
         const debugMode = req.query && (req.query.debug === '1' || req.query.debug === 'true');
         const debugInfo = {
-            itadCount: Array.isArray(itadDeals) ? itadDeals.length : 0,
-            cheapsharkCount: Array.isArray(cheapsharkDeals) ? cheapsharkDeals.length : 0,
-            itadSample: (Array.isArray(itadDeals) ? itadDeals.slice(0,3) : []),
-            cheapsharkSample: (Array.isArray(cheapsharkDeals) ? cheapsharkDeals.slice(0,3) : [])
+            itadCount: deals.length,
+            itadSample: deals.slice(0,3)
         };
 
         // Deduplicate deals by steamAppID, keeping best discount
@@ -208,19 +199,12 @@ function getSteamUrl(deal) {
 }
 
 /**
- * Fetch deals from CheapShark API (fallback)
- * @returns {Promise<Array>} Normalized deal objects
+ * Fetch deals from CheapShark API (fallback disabled)
+ * @returns {Promise<Array>} Empty array (CheapShark disabled in ITAD-only mode)
  */
 async function fetchCheapSharkDeals() {
-    try {
-        console.log('[API] Fetching from CheapShark (fallback) with retries...');
-
-        let allDeals = [];
-        const pageSize = 100;
-        const maxPages = 30; // 30 pages * 100 deals = 3000 deals
-        const maxAttemptsPerPage = 3; // retry up to 3 times per page
-        const errors = [];
-        let attempts = 0;
+    console.warn('[API] fetchCheapSharkDeals called, but cheapshark is disabled (ITAD-only).');
+    return [];
 
         // Helper: exponential backoff
         const backoff = async (attempt) => {
