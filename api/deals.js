@@ -4,7 +4,7 @@
  * Returns normalized deal objects with consistent shape
  */
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -206,7 +206,7 @@ async function fetchCheapSharkDeals() {
     console.warn('[API] fetchCheapSharkDeals called, but cheapshark is disabled (ITAD-only).');
     return [];
 }
-}
+
 
 /**
  * Normalize CheapShark deal to standard shape

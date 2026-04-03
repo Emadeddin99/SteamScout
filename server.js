@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 
 // Import the deals API handler
-const dealsHandler = require('./api/deals.js').default;
+const dealsHandler = require('./api/deals.js');
 
 const app = express();
 const PORT = 3001;
