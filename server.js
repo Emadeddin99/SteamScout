@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+require('dotenv').config();
 
 // Import the deals API handler
 const dealsHandler = require('./api/deals.js');

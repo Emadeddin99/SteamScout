@@ -85,8 +85,8 @@ async function fetchIsThereAnyDealDeals() {
             return [];
         }
 
-        // ITAD v01 endpoint for current deals
-        const url = `https://api.isthereanydeal.com/v01/deals/list/?key=${ITAD_API_KEY}&country=US&shops=steam&limit=1500&sort=discount`;
+        // ITAD v2 endpoint for current deals
+        const url = `https://api.isthereanydeal.com/deals/v2?key=${ITAD_API_KEY}&country=US&shops=61&limit=200&sort=-cut`;
         
         const response = await fetch(url, {
             headers: {
@@ -112,8 +112,8 @@ async function fetchIsThereAnyDealDeals() {
             return [];
         }
 
-        // v01/deals/list/ returns deals directly in the response
-        const dealsList = Array.isArray(data.deals) ? data.deals : (Array.isArray(data) ? data : []);
+        // v2/deals returns deals in data.list
+        const dealsList = Array.isArray(data.list) ? data.list : (Array.isArray(data.deals) ? data.deals : (Array.isArray(data) ? data : []));
 
         if (!Array.isArray(dealsList)) {
             console.warn('[API] Invalid ITAD response format');
@@ -139,26 +139,34 @@ async function fetchIsThereAnyDealDeals() {
  */
 function normalizeITADDeal(deal) {
     try {
+        // Handle both v01 and v2 formats
+        const dealData = deal.deal || deal; // v2 has pricing under 'deal' property
+        
         // Extract Steam app ID from ITAD's app_id or id field
         const steamAppID = deal.app_id 
             ? parseInt(deal.app_id) 
             : (deal.app?.id ? parseInt(deal.app.id) : null);
         
-        const salePrice = parseFloat(deal.price_new || deal.price) || 0;
-        const normalPrice = parseFloat(deal.price_old || deal.regular) || 0;
+        const salePrice = parseFloat(dealData.price?.amount || dealData.price_new || dealData.price) || 0;
+        const normalPrice = parseFloat(dealData.regular?.amount || dealData.price_old || dealData.regular) || 0;
         
         // Calculate discount percentage
         let discount = 0;
         if (normalPrice > 0) {
             discount = Math.round(((normalPrice - salePrice) / normalPrice) * 100);
         }
-        // Use cut field if provided
-        if (deal.cut && deal.cut > 0) {
+        // Use cut field if provided (v2 format has it under deal.cut)
+        if (dealData.cut && dealData.cut > 0) {
+            discount = Math.round(dealData.cut);
+        } else if (deal.cut && deal.cut > 0) {
             discount = Math.round(deal.cut);
         }
 
-        // Generate store URL using helper
-        const storeUrl = getSteamUrl({ steamAppID, title: deal.title });
+        // Generate store URL - prefer ITAD deal URL, fallback to Steam URL
+        let storeUrl = getSteamUrl({ steamAppID, title: deal.title });
+        if (dealData.url) {
+            storeUrl = dealData.url;
+        }
 
         return {
             title: deal.title || 'Unknown Game',
@@ -166,7 +174,7 @@ function normalizeITADDeal(deal) {
             salePrice,
             normalPrice,
             discount,
-            expiry: deal.expiry ? parseInt(deal.expiry) : null, // Unix timestamp (seconds) - preserve as-is
+            expiry: dealData.expiry ? parseInt(dealData.expiry) : (deal.expiry ? parseInt(deal.expiry) : null), // Unix timestamp (seconds) - preserve as-is
             store: 'Steam',
             type: salePrice === 0 ? 'giveaway' : 'sale',
             source: 'itad',
@@ -271,13 +279,8 @@ function deduplicateDeals(deals) {
     let skipped = 0;
 
     for (const deal of deals) {
-        if (!deal.steamAppID) {
-            console.warn(`[API] Skipping deal without steamAppID: "${deal.title}"`);
-            skipped++;
-            continue; // Skip deals without Steam ID
-        }
-
-        const key = deal.steamAppID;
+        // Use title as fallback key if no steamAppID
+        const key = deal.steamAppID || deal.title;
         const existing = map.get(key);
 
         if (!existing || deal.discount > existing.discount) {
