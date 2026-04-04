@@ -1080,7 +1080,6 @@ a:hover {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-<<<<<<< HEAD
     padding: 60px 20px;
     color: var(--text-secondary);
     min-height: 300px;
@@ -1102,35 +1101,15 @@ a:hover {
     to {
         transform: rotate(360deg);
     }
-=======
-    padding: 40px 20px;
-    color: var(--text-secondary);
-    min-height: 220px;
-}
-
-.loading-deals .spinner {
-    margin-bottom: 12px;
->>>>>>> cf421cc466fd4ea5d80b7e8dcadd972c20938d40
 }
 
 .loading-deals p {
     margin: 0;
-<<<<<<< HEAD
     font-size: 1rem;
     color: var(--text-tertiary);
-=======
->>>>>>> cf421cc466fd4ea5d80b7e8dcadd972c20938d40
 }
 
-/* Deals Button Styling */
 .deals-btn {
-    background: linear-gradient(135deg, var(--accent), var(--accent-light));
-    color: var(--bg-primary);
-    border: none;
-    padding: 12px 20px;
-    border-radius: var(--radius-md);
-    font-weight: 600;
-    cursor: pointer;
     transition: all var(--transition);
     display: flex;
     align-items: center;
