@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
         deals = filterValidDeals(deals);
         
         // Apply sort + global caps
-deals = deals
+        deals = deals
             .sort((a, b) => b.discount - a.discount)
             .slice(0, 3000);
 
@@ -49,11 +49,12 @@ deals = deals
         const requestLimit = Math.max(Math.min(parseInt(req.query.limit || '20', 10), 100), 5);
         const pagedDeals = deals.slice(requestOffset, requestOffset + requestLimit);
 
-        responsePayload.deals = pagedDeals;
-        responsePayload.offset = requestOffset;
-        responsePayload.limit = requestLimit;
-        responsePayload.total = deals.length;
-            deals,
+        const responsePayload = {
+            success: true,
+            deals: pagedDeals,
+            offset: requestOffset,
+            limit: requestLimit,
+            total: deals.length,
             timestamp: new Date().toISOString()
         };
 
