@@ -11,6 +11,11 @@ const PORT = 3001;
 // Serve static files
 app.use(express.static(path.join(__dirname)));
 
+// Serve legacy root page
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.legacy.html'));
+});
+
 // API routes
 app.get('/api/deals', async (req, res) => {
     // Mock req object for Vercel compatibility
